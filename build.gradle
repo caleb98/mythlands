@@ -1,0 +1,29 @@
+tasks.register('updateFrontend') {
+    doLast {
+        copy {
+            from './frontend/dist/'
+            into './backend/src/main/resources/static/'           
+        }
+    }
+}
+
+tasks.register('frontendDevUpdate') {
+    dependsOn 'frontend:buildDevelopment'
+    doLast {
+        copy {
+            from './frontend/dist/'
+            into './backend/src/main/resources/static/'           
+        }
+    }
+}
+
+tasks.register('build', Copy) {
+    dependsOn 'frontend:build', 'updateFrontend', 'backend:build'
+    from './backend/build/libs'
+    into './build'
+}
+
+tasks.register('serve', GradleBuild) {
+    dependsOn 'build'
+    tasks = ['backend:bootRun']
+}

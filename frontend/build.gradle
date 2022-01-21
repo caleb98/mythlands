@@ -1,0 +1,19 @@
+tasks.register('buildDevelopment', Exec) {
+    if(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('win')) {
+        commandLine 'cmd', '/c', 'npm run build -- --mode development'   
+    }
+    else {
+        executable '/usr/bin/npm'
+        args 'run', 'build', '--', '--mode', 'development'
+    }
+}
+
+tasks.register('build', Exec) {
+    if(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('win')) {
+        commandLine 'cmd', '/c', 'npm run build'   
+    }
+    else {
+        executable '/usr/bin/npm'
+        args 'run', 'build'
+    }
+}
