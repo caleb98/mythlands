@@ -11,7 +11,7 @@
 			<div class="col-6">
 				<h4 class="text-center">{{bossInfo.name}}</h4>
 				<div class="progress" style="height: 40px">
-					<div class="progress-bar bg-danger" role="progressbar" :style="{ width: bossHealthWidth + '%'}"></div>
+					<div class="progress-bar bg-health" role="progressbar" :style="{ width: bossHealthWidth + '%'}"></div>
 				</div>
 				<p class="text-center">{{bossInfo.currentHealth}} / {{bossInfo.maxHealth}}</p>
 			</div>
@@ -163,7 +163,9 @@ export default {
 					listeners: {
 						loggedOut: this.onLogout
 					},
-					properties: {}
+					properties: {
+						bossId: this.bossInfo.id
+					}
 				}
 			}
 			else {
@@ -183,7 +185,7 @@ export default {
 		})
 
 		// Setup websocket callbacks
-		this.bossStatusSub = WS.watch("/global/boss-status")
+		this.bossStatusSub = WS.watch("/global/boss.status")
 			.pipe(map(message => {
 				return JSON.parse(message.body);
 			}))
@@ -191,7 +193,7 @@ export default {
 				self.bossInfo = data;
 			});
 		
-		this.bossDeathSub = WS.watch("/global/boss-died")
+		this.bossDeathSub = WS.watch("/global/boss.died")
 			.pipe(map(message => {
 				return JSON.parse(message.body);
 			}))
@@ -208,12 +210,7 @@ export default {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	text-align: center;
-	color: #2c3e50;
 	margin-top: 20px;
-}
-
-body {
-	background-color: #424242;
 }
 
 .component-fade-enter-active,
@@ -225,4 +222,6 @@ body {
 .component-fade-leave-to {
 	opacity: 0;
 }
+
+
 </style>

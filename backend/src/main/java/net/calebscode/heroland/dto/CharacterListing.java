@@ -23,6 +23,8 @@ public class CharacterListing {
 	public final int avoidance;
 	public final int resistance;
 	
+	public final int skillPoints;
+	
 	public CharacterListing(HerolandCharacter hc) {
 		firstName = hc.getFirstName();
 		lastName = hc.getLastName();
@@ -41,7 +43,9 @@ public class CharacterListing {
 		attunement = hc.getAttunement();
 		toughness = hc.getToughness();
 		avoidance = hc.getAvoidance();
-		resistance = hc.getResistance();		
+		resistance = hc.getResistance();
+		
+		skillPoints = hc.getSkillPoints();
 	}
 	
 }

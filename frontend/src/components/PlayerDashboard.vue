@@ -27,37 +27,55 @@
 					<div class="mb-2"><b>Level {{activeCharacter.level}}</b></div>
 					<img src="../assets/hero.png" width="64" height="64" class="pixel-image">
 				</div>
-				<div class="col-4 p-0">
-					<div class="container-fluid p-0">
-						<div class="row justify-content-between">
-							<div class="col-6"><b>STR</b></div>
-							<div class="col-6">{{activeCharacter.strength}}</div>
-						</div>
-						<div class="row justify-content-between">
-							<div class="col-6"><b>DEX</b></div>
-							<div class="col-6">{{activeCharacter.dexterity}}</div>
-						</div>
-						<div class="row justify-content-between">
-							<div class="col-6"><b>ATT</b></div>
-							<div class="col-6">{{activeCharacter.attunement}}</div>
-						</div>
-					</div>
-				</div>
-				<div class="col-4 p-0">
-					<div class="container-fluid  p-0">
-						<div class="row justify-content-between">
-							<div class="col-6"><b>TGH</b></div>
-							<div class="col-6">{{activeCharacter.toughness}}</div>
-						</div>
-						<div class="row justify-content-between">
-							<div class="col-6"><b>AVD</b></div>
-							<div class="col-6">{{activeCharacter.avoidance}}</div>
-						</div>
-						<div class="row justify-content-between">
-							<div class="col-6"><b>RES</b></div>
-							<div class="col-6">{{activeCharacter.resistance}}</div>
-						</div>
-					</div>
+				<div class="col-8 p-0">
+					<table class="table align-middle stats-table mb-0">
+						<tbody>
+							<tr>
+								<td class="text-start"><b>STR</b></td>
+								<td class="text-end">{{activeCharacter.strength}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('STRENGTH')">add</span>
+								</td>
+
+								<td class="text-start"><b>TGH</b></td>
+								<td class="text-end">{{activeCharacter.toughness}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('TOUGHNESS')">add</span>
+								</td>
+							</tr>
+							<tr>
+								<td class="text-start"><b>DEX</b></td>
+								<td class="text-end">{{activeCharacter.dexterity}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('DEXTERITY')">add</span>
+								</td>
+
+								<td class="text-start"><b>AVD</b></td>
+								<td class="text-end">{{activeCharacter.avoidance}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('AVOIDANCE')">add</span>
+								</td>
+							</tr>
+							<tr>
+								<td class="text-start"><b>ATT</b></td>
+								<td class="text-end">{{activeCharacter.attunement}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('ATTUNEMENT')">add</span>
+								</td>
+
+								<td class="text-start"><b>RES</b></td>
+								<td class="text-end">{{activeCharacter.resistance}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('RESISTANCE')">add</span>
+								</td>
+							</tr>
+							<tr v-if="hasSkillPoints">
+								<td colspan="6" class="pb-0">
+									<span class="text-skill-points ps-4 pe-4 pt-1 pb-1">{{activeCharacter.skillPoints}} Skill Point{{activeCharacter.skillPoints > 1 ? 's' : ''}}</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</div>
 			<div class="row" v-if="activeCharacter != null">
@@ -105,6 +123,9 @@ export default {
 			cooldownTime: 0
 		}
 	},
+	props: {
+		bossId: Number
+	},
 	emits: ["loggedOut"],
 	methods: {
 		loadUserCharacters() {
@@ -140,8 +161,23 @@ export default {
 
 		attack() {
 			WS.publish({
-				destination: "/game/attack"
+				destination: "/game/attack",
+				body: JSON.stringify({
+					bossId: this.bossId
+				})
 			});
+		},
+
+		spendSkillPoint(skill) {
+			WS.publish({
+				destination: "/game/character.skillup",
+				body: JSON.stringify({
+					skill: skill
+				})
+			})
+			// This is done server side, but we locally subtract just to
+			// make the UI snappier and prevent accidental message sends.
+			this.activeCharacter.skillPoints -= 1;
 		}
 	},
 	computed: {
@@ -155,7 +191,7 @@ export default {
 		},
 
 		xpToLevel() {
-			return 9 + this.activeCharacter.level;
+			return 10 + (10 * (this.activeCharacter.level - 1));
 		},
 
 		fullCharacterName() {
@@ -197,6 +233,10 @@ export default {
 		showXpCap() {
 			return this.xpPercent < 100 && this.xpPercent > 0;
 		},
+
+		hasSkillPoints() {
+			return this.activeCharacter.skillPoints > 0;
+		}
 	},
 
 	watch: {
@@ -241,11 +281,6 @@ export default {
 </script>
 
 <style scoped>
-.framed {
-	border-radius: 5px;
-	background-color: #f0f0f0;
-}
-
 .resource-bar {
 	height: 20px;
 	background-color: #a5a5a5;
@@ -338,4 +373,35 @@ export default {
 	from { width: 100%; }
 	to { width: 0%; }
 }
+
+.stats-table {
+
+}
+
+.stats-table tr {
+	border-bottom-width: 0px;
+}
+
+.text-skill-points {
+	background-color: orange;
+	border-radius: 3px;
+}
+
+.btn-skill {
+	background-color: orange;
+	padding: 4px;
+	border-radius: 5px;
+	animation-name: btn-skill-glow;
+	animation-duration: 2s;
+	animation-iteration-count: infinite;
+	animation-direction: alternate-reverse;
+	animation-timing-function: ease-in-out;
+	will-change: transform, opacity;
+}
+
+@keyframes btn-skill-glow {
+	from { box-shadow: 0px 0px 7px 2px orange; }
+	to { box-shadow: none; }
+}
+
 </style>

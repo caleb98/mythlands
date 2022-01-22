@@ -1,6 +1,8 @@
 package net.calebscode.heroland;
 
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import javax.transaction.Transactional;
@@ -18,10 +20,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import net.calebscode.heroland.character.HerolandCharacter;
-import net.calebscode.heroland.messages.BossDiedMessage;
-import net.calebscode.heroland.messages.BossStatusMessage;
-import net.calebscode.heroland.messages.CharacterUpdateMessage;
-import net.calebscode.heroland.messages.CooldownMessage;
+import net.calebscode.heroland.character.HerolandCharacterRepository;
+import net.calebscode.heroland.messages.in.AttackMessage;
+import net.calebscode.heroland.messages.out.BossDiedMessage;
+import net.calebscode.heroland.messages.out.BossStatusMessage;
+import net.calebscode.heroland.messages.out.CharacterUpdateMessage;
+import net.calebscode.heroland.messages.out.CooldownMessage;
 import net.calebscode.heroland.user.HerolandUser;
 import net.calebscode.heroland.user.UserRepository;
 
@@ -29,26 +33,25 @@ import net.calebscode.heroland.user.UserRepository;
 public class BossController {
 	
 	@Autowired private UserRepository userRepository;
+	@Autowired private HerolandCharacterRepository characterRepository;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
 	
 	private Random random = new Random();
-	private int bossNum = 1;
-	private String bossName = "Boss 1";
-	private int maxHealth = 15;
-	private int currentHealth = 15;
+	private int bossCounter = 1;
+	private Boss boss = new Boss("Boss 1", 15);
+	
+	private HashMap<Integer, ContributionInfo> contribs = new HashMap<>(); 
 	
 	private static Object bossLock = new Object();
 
 	@MessageMapping("/attack")
 	@Transactional
 	@SendToUser("/local/character")
-	public void attack(Principal principal) {
-		//TODO: check that they are attacking the same boss that they meant to
-		
+	public void attack(AttackMessage attack, Principal principal) {	
 		// Get the attacking user's hero
 		HerolandUser user = userRepository.findByUsername(principal.getName());
-		HerolandCharacter hero = user.getCharacters().stream().filter(c -> !c.isDeceased()).findFirst().orElseGet(() -> null);
+		HerolandCharacter hero = user.getActiveCharacter();
 		if(hero == null) {
 			//TODO: error handle
 			return;
@@ -62,48 +65,114 @@ public class BossController {
 		}
 		
 		// Do boss calcs
-		synchronized(bossLock) {
+		synchronized(bossLock) {			
+			// Check boss alive
+			if(boss.getCurrentHealth() <= 0) {
+				return;
+			}
+			
+			// Check that the boss the user wanted to attack
+			// is still the active boss.
+			if(boss.getId() != attack.bossId) {
+				return;
+			}
+			
 			// Do the attack
-			currentHealth -= 1;
+			boss.damage(1); //TODO: damage calculation
+			if(!contribs.containsKey(hero.getId())) {
+				contribs.put(hero.getId(), new ContributionInfo());
+			}
+			var info = contribs.get(hero.getId());
+			info.addTotalDamage(1);
+			info.incrementAttacks();
 			
 			// Check for boss kill
-			if(currentHealth <= 0) {
-				messenger.convertAndSend("/global/boss-died", new BossDiedMessage(bossName, hero.getFullName()));
-				bossName = "Boss " + ++bossNum;
-				currentHealth = maxHealth = 12 + random.nextInt(6);
+			if(boss.getCurrentHealth() <= 0) {
+				info.setDealtKillingBlow(true);
+				messenger.convertAndSend("/global/boss.died", new BossDiedMessage(boss.getName(), hero.getFullName()));
+				boss = new Boss("Boss " + ++bossCounter, 12 + random.nextInt(6));
+				
+				// Process contributions and update relevant characters
+				processContributorAwards();
 			}
 		}
 		
 		// Send updated boss info
-		messenger.convertAndSend("/global/boss-status", new BossStatusMessage(bossName, currentHealth, maxHealth));
+		messenger.convertAndSend("/global/boss.status", new BossStatusMessage(boss));
 		
 		// Send attack result to user
 		long attackCooldown = currentTime + 2000;
 		hero.setAttackReady(attackCooldown);
 		
-		JsonObject updates = new JsonObject();
-		
-		//TODO: add skill point
-		int newXp = hero.getXp() + 1;
-		if(newXp >= 9 + hero.getLevel()) {
-			newXp = 0;
-			int newLevel = hero.getLevel() + 1;
-			updates.addProperty("level", newLevel);
-			hero.setLevel(newLevel);
-		}
-		updates.addProperty("xp", newXp);
-		hero.setXp(newXp);
-		
+		// Process xp gain
+		JsonObject updates = addCharacterXp(hero, 1);
 		JsonArray updatesArr = new JsonArray();
 		updatesArr.add(updates);
 		messenger.convertAndSendToUser(principal.getName(), "/local/character", gson.toJson(new CharacterUpdateMessage(updatesArr)));
 		messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(2.0));
-		return;
+	}
+	
+	private void processContributorAwards() {
+		// Process each contribution
+		for(Entry<Integer, ContributionInfo> entry : contribs.entrySet()) {
+			var contributor = characterRepository.getById(entry.getKey());
+			var contrib = entry.getValue();
+			
+			// TODO: check if the contributor hero died
+			
+			int xpGained = 5 + (contrib.dealtKillingBlow() ? 5 : 0);
+			
+			// Add their xp and push the updates
+			JsonObject updates = addCharacterXp(contributor, xpGained);
+			JsonArray updatesArr = new JsonArray();
+			updatesArr.add(updates);
+		
+			messenger.convertAndSendToUser(
+				contributor.getOwner().getUsername(), 
+				"/local/character", 
+				gson.toJson(new CharacterUpdateMessage(updatesArr))
+			);
+		}
+		
+		// Clear the map for the next boss
+		contribs.clear();
+	}
+	
+	/**
+	 * Adds xp to a character
+	 * @param character
+	 * @param xp
+	 * @return a {@link JsonObject} representing the changed propertied of the character
+	 */
+	private JsonObject addCharacterXp(HerolandCharacter character, int xp) {
+		int oldLevel = character.getLevel();
+		
+		int newXp = character.getXp() + xp;
+		int newLevel = character.getLevel();
+		int newSkillPoints = character.getSkillPoints();
+		int xpRequired = 10 + (10 * (newLevel - 1));
+		while(newXp >= xpRequired) {
+			newXp -= xpRequired;
+			newLevel++;
+			newSkillPoints++;
+			xpRequired = 10 + (10 * (newLevel - 1));
+		}
+		character.setXp(newXp);
+		character.setLevel(newLevel);
+		character.setSkillPoints(newSkillPoints);
+		
+		JsonObject updates = new JsonObject();
+		updates.addProperty("xp", newXp);
+		if(oldLevel != newLevel) {
+			updates.addProperty("level", newLevel);
+			updates.addProperty("skillPoints", newSkillPoints);
+		}
+		return updates;
 	}
 	
 	@GetMapping("/game/bossinfo")
 	public @ResponseBody BossStatusMessage getBossInfo() {
-		return new BossStatusMessage(bossName, currentHealth, maxHealth);
+		return new BossStatusMessage(boss);
 	}
 	
 }

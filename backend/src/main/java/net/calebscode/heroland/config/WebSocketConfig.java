@@ -26,7 +26,17 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
 	protected void configureInbound(MessageSecurityMetadataSourceRegistry messages) {
 		messages
 			.nullDestMatcher().permitAll()
-			.simpDestMatchers("/game/**").hasRole("PLAYER");
+			
+			// Message permissions
+			.simpMessageDestMatchers("/global/**").hasRole("ADMIN")
+			.simpMessageDestMatchers("/game/**").hasRole("PLAYER")
+			.simpMessageDestMatchers("/topic/**").hasRole("PLAYER")
+			.simpMessageDestMatchers("/local/**").hasRole("PLAYER")
+			
+			// Subscribe permissions
+			.simpSubscribeDestMatchers("/global/**").permitAll()
+			.simpSubscribeDestMatchers("/local/**").hasRole("PLAYER")
+			.simpSubscribeDestMatchers("/user/**").hasRole("PLAYER");
 	}
 	
 }

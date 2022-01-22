@@ -1,4 +1,4 @@
-package net.calebscode.heroland.messages;
+package net.calebscode.heroland.messages.out;
 
 public class CooldownMessage {
 

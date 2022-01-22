@@ -38,6 +38,7 @@ public class HerolandCharacter {
 	@Column(nullable = false) private int resistance = 0;
 	
 	@Column(nullable = false) private long attackReady = 0;
+	@Column(nullable = false) private int skillPoints = 0;
 	
 	@ManyToOne
 	@JoinColumn(name = "users_id")
@@ -134,6 +135,10 @@ public class HerolandCharacter {
 	public void setStrength(int strength) {
 		this.strength = strength;
 	}
+	
+	public void modifyStrength(int amount) {
+		this.strength += amount;
+	}
 
 	public int getDexterity() {
 		return dexterity;
@@ -141,6 +146,10 @@ public class HerolandCharacter {
 
 	public void setDexterity(int dexterity) {
 		this.dexterity = dexterity;
+	}
+	
+	public void modifyDexterity(int amount) {
+		this.dexterity += amount;
 	}
 
 	public int getAttunement() {
@@ -150,6 +159,10 @@ public class HerolandCharacter {
 	public void setAttunement(int attunement) {
 		this.attunement = attunement;
 	}
+	
+	public void modifyAttunement(int amount) {
+		this.attunement += amount;
+	}
 
 	public int getToughness() {
 		return toughness;
@@ -158,6 +171,10 @@ public class HerolandCharacter {
 	public void setToughness(int toughness) {
 		this.toughness = toughness;
 	}
+	
+	public void modifyToughness(int amount) {
+		this.toughness += amount;
+	}
 
 	public int getAvoidance() {
 		return avoidance;
@@ -165,6 +182,10 @@ public class HerolandCharacter {
 
 	public void setAvoidance(int avoidance) {
 		this.avoidance = avoidance;
+	}
+	
+	public void modifyAvoidance(int amount) {
+		this.avoidance += amount;
 	}
 
 	public int getResistance() {
@@ -175,12 +196,24 @@ public class HerolandCharacter {
 		this.resistance = resistance;
 	}
 	
+	public void modifyResistance(int amount) {
+		this.resistance += amount;
+	}
+	
 	public long getAttackReady() {
 		return attackReady;
 	}
 	
 	public void setAttackReady(long attackCooldown) {
 		this.attackReady = attackCooldown;
+	}
+	
+	public int getSkillPoints() {
+		return skillPoints;
+	}
+	
+	public void setSkillPoints(int skillPoints) {
+		this.skillPoints = skillPoints;
 	}
 	
 	public String getFullName() {
