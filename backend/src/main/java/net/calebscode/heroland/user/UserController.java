@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import net.calebscode.heroland.dto.UserInfo;
 import net.calebscode.heroland.response.ServerResponse;
+import net.calebscode.heroland.response.dto.UserInfo;
 
 @Controller
 public class UserController {

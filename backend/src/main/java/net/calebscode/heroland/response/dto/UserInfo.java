@@ -1,4 +1,4 @@
-package net.calebscode.heroland.dto;
+package net.calebscode.heroland.response.dto;
 
 import net.calebscode.heroland.user.HerolandUser;
 

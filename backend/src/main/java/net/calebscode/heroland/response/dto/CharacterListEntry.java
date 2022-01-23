@@ -1,8 +1,10 @@
-package net.calebscode.heroland.dto;
+package net.calebscode.heroland.response.dto;
 
 import net.calebscode.heroland.character.HerolandCharacter;
 
-public class CharacterListing {
+public class CharacterListEntry {
+	
+	public final int id;
 	
 	public final String firstName;
 	public final String lastName;
@@ -25,7 +27,9 @@ public class CharacterListing {
 	
 	public final int skillPoints;
 	
-	public CharacterListing(HerolandCharacter hc) {
+	public CharacterListEntry(HerolandCharacter hc) {
+		id = hc.getId();
+		
 		firstName = hc.getFirstName();
 		lastName = hc.getLastName();
 		ownerName = hc.getOwner().getUsername();

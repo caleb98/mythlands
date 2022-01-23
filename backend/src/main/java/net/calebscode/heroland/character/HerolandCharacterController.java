@@ -1,6 +1,7 @@
 package net.calebscode.heroland.character;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
@@ -18,10 +19,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-import net.calebscode.heroland.dto.CharacterListing;
 import net.calebscode.heroland.messages.in.SpendSkillPointMessage;
 import net.calebscode.heroland.messages.out.CharacterUpdateMessage;
 import net.calebscode.heroland.response.ServerResponse;
+import net.calebscode.heroland.response.dto.CharacterList;
+import net.calebscode.heroland.response.dto.CharacterListEntry;
 import net.calebscode.heroland.user.HerolandUser;
 import net.calebscode.heroland.user.UserRepository;
 
@@ -52,7 +54,8 @@ public class HerolandCharacterController {
 		newChar.setOwner(user);
 		newChar = characterRepository.save(newChar);
 		user.getCharacters().add(newChar);
-		//userRepository.save(user);
+		user.setActiveCharacter(newChar);
+		userRepository.save(user);
 		
 		return new ServerResponse("Character created!");
 	}
@@ -61,9 +64,14 @@ public class HerolandCharacterController {
 	public @ResponseBody ServerResponse listCharacters(Principal principal) {
 		String username = principal.getName();
 		HerolandUser user = userRepository.findByUsername(username);
+		
+		List<CharacterListEntry> characters = user.getCharacters().stream().map((c) -> new CharacterListEntry(c)).collect(Collectors.toList());
+		HerolandCharacter active = user.getActiveCharacter();
+		int activeCharacterId = active == null ? -1 : active.getId();
+		
 		return new ServerResponse(
 				"Success!", 
-				user.getCharacters().stream().map((c) -> new CharacterListing(c)).collect(Collectors.toList())
+				new CharacterList(characters, activeCharacterId)
 		);
 	}
 	

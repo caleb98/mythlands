@@ -1,21 +1,29 @@
 <template>
 	<div>
-		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="activeCharacter == null">
+		<div class="container-fluid p-2 framed mb-2" style="position: relative;" v-if="activeCharacter != null">
+			<div class="row">
+				<div class="col">
+					<button type="button" class="btn btn-danger" @click="attack()" :disabled="cooldownTime > 0 || isCharacterDeceased">Attack</button>
+				</div>
+			</div>
+			<div id="recharge-box" :style="{ 'animation-duration': cooldownTime + 's' }"></div>
+		</div>
+		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="showCharacterCreator">
 			<div class="row justify-content-center">
 				<div class="col-6">
 					<CharacterCreationComponent @characterCreationSuccess="loadUserCharacters()"/>
 				</div>
 			</div>
 		</div>
-		<div class="container-fluid p-2 framed mb-2" style="position: relative;" v-if="activeCharacter != null">
-			<div class="row">
-				<div class="col">
-					<button type="button" class="btn btn-danger" @click="attack()" :disabled="cooldownTime > 0">Attack</button>
+		<div class="container-fluid pt-3 pb-3 framed mb-2" style="position: relative;" v-if="activeCharacter != null">
+			<div id="death-overlay" class="container-fluid" v-if="activeCharacter.isDeceased">
+				<div class="row justify-content-center align-items-center" style="height: 100%">
+					<div class="col">
+						<h3 class="text-center"><b>Dead</b></h3>
+						<p><b><i>I was one day from retirement...</i><br> - {{fullCharacterName}}</b></p>
+					</div>
 				</div>
 			</div>
-			<div id="recharge-box" :style="{ 'animation-duration': cooldownTime + 's' }"></div>
-		</div>
-		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="activeCharacter != null">
 			<div class="row justify-content-center mb-4 character-name">
 				<div class="col text-center">
 					<b class="fs-4">{{fullCharacterName}}</b>
@@ -81,15 +89,21 @@
 			<div class="row" v-if="activeCharacter != null">
 				<div class="col-12">
 					<div class="progress resource-bar border-health mb-1">
-						<div class="progress-bar progress-bar-striped progress-bar-animated bg-health" :class="{'bg-health-cap': showHealthCap}" role="progressbar" :style="{width: healthPercent + '%'}"></div>
+						<div class="progress-bar progress-bar-striped bg-health" 
+							:class="{'bg-health-cap': showHealthCap, 'progress-bar-animated': !activeCharacter.isDeceased}" role="progressbar" :style="{width: healthPercent + '%'}">
+						</div>
 						<div class="progress-bar-title">{{healthString}}</div>
 					</div>
 					<div class="progress resource-bar border-mana mb-1">
-						<div class="progress-bar progress-bar-striped progress-bar-animated bg-mana" :class="{'bg-mana-cap': showManaCap}" role="progressbar" :style="{width: manaPercent + '%'}"></div>
+						<div class="progress-bar progress-bar-striped bg-mana" 
+							:class="{'bg-mana-cap': showManaCap, 'progress-bar-animated': !activeCharacter.isDeceased}" role="progressbar" :style="{width: manaPercent + '%'}">
+						</div>
 						<div class="progress-bar-title">{{manaString}}</div>
 					</div>
 					<div class="progress resource-bar border-xp">
-						<div class="progress-bar progress-bar-striped progress-bar-animated bg-xp" :class="{'bg-xp-cap': showXpCap}" role="progressbar" :style="{width: xpPercent + '%'}"></div>
+						<div class="progress-bar progress-bar-striped bg-xp" 
+							:class="{'bg-xp-cap': showXpCap, 'progress-bar-animated': !activeCharacter.isDeceased}" role="progressbar" :style="{width: xpPercent + '%'}">
+						</div>
 						<div class="progress-bar-title">{{xpString}}</div>
 					</div>
 				</div>
@@ -97,7 +111,10 @@
 		</div>
 		<div class="container framed p-2">
 			<div class="row">
-				<div class="col-auto">
+				<div class="col-auto" v-if="isCharacterDeceased && !showCharacterCreator">
+					<button @click="showCharacterCreator = true" class="btn btn-primary">New Character</button>
+				</div>
+				<div class="col-auto ms-auto">
 					<button @click="logout()" class="btn btn-primary">Logout</button>
 				</div>
 			</div>
@@ -119,8 +136,10 @@ export default {
 	data() {
 		return {
 			characters: [],
+			activeCharacterId: -1,
 			userInfo: null,
-			cooldownTime: 0
+			cooldownTime: 0,
+			showCharacterCreator: false,
 		}
 	},
 	props: {
@@ -129,14 +148,21 @@ export default {
 	emits: ["loggedOut"],
 	methods: {
 		loadUserCharacters() {
-			const self = this;
-			$.get("/character/list", function(data) {
-				if(data.isError) {
-					console.log("Error retrieving character list: " + data.message);
+			$.get("/character/list", response => {
+				if(response.isError) {
+					console.log("Error retrieving character list: " + response.message);
 					return;
 				}
 				
-				self.characters = data.data;
+				this.characters = response.data.characters;
+				this.activeCharacterId = response.data.activeCharacterId;
+				
+				if(this.activeCharacterId == -1) {
+					this.showCharacterCreator = true;
+				}
+				else {
+					this.showCharacterCreator = false;
+				}
 			});
 		},
 
@@ -182,12 +208,16 @@ export default {
 	},
 	computed: {
 		activeCharacter() {
-			if(this.characters == null) {
+			if(this.activeCharacterId == -1) {
 				return null;
 			}
 			else {
-				return this.characters.filter(character => !character.isDeceased)[0];
+				return this.characters.filter(character => character.id == this.activeCharacterId)[0];
 			}
+		},
+
+		isCharacterDeceased() {
+			return this.activeCharacter == null ? false : this.activeCharacter.isDeceased;
 		},
 
 		xpToLevel() {
@@ -260,7 +290,7 @@ export default {
 				return JSON.parse(message.body);
 			}))
 			.subscribe(body => {
-				var character = this.characters.filter(c => !c.isDeceased)[0];
+				var character = this.activeCharacter;
 				Object.assign(character, ...body.updates);
 			});
 
@@ -402,6 +432,18 @@ export default {
 @keyframes btn-skill-glow {
 	from { box-shadow: 0px 0px 7px 2px orange; }
 	to { box-shadow: none; }
+}
+
+#death-overlay {
+	position: absolute;
+	z-index: 99;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	left: 0px;
+	border-radius: 5px;
+	backdrop-filter: blur(2px) grayscale(100%);
+	background-color: rgba(255, 0, 0, 0.30);
 }
 
 </style>

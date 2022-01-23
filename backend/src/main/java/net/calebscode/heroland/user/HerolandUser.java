@@ -11,6 +11,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
 import net.calebscode.heroland.character.HerolandCharacter;
@@ -37,6 +38,9 @@ public class HerolandUser {
 	
 	@OneToMany(mappedBy = "owner")
 	private List<HerolandCharacter> characters = new ArrayList<>();
+	
+	@OneToOne
+	private HerolandCharacter activeCharacter;
 	
 	public Integer getId() {
 		return id;
@@ -75,7 +79,11 @@ public class HerolandUser {
 	}
 	
 	public HerolandCharacter getActiveCharacter() {
-		return characters.stream().filter(c -> !c.isDeceased()).findFirst().orElseGet(() -> null);
+		return activeCharacter;
+	}
+	
+	public void setActiveCharacter(HerolandCharacter character) {
+		this.activeCharacter = character;
 	}
 	
 }

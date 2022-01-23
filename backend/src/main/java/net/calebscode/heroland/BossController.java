@@ -48,12 +48,17 @@ public class BossController {
 	@MessageMapping("/attack")
 	@Transactional
 	@SendToUser("/local/character")
-	public void attack(AttackMessage attack, Principal principal) {	
+	public void attack(AttackMessage attack, Principal principal) {
 		// Get the attacking user's hero
 		HerolandUser user = userRepository.findByUsername(principal.getName());
 		HerolandCharacter hero = user.getActiveCharacter();
 		if(hero == null) {
 			//TODO: error handle
+			return;
+		}
+		
+		// Make sure that the character is living
+		if(hero.isDeceased()) {
 			return;
 		}
 		
@@ -97,6 +102,17 @@ public class BossController {
 			}
 		}
 		
+		
+		// Deal damage to the player
+		// TODO: change how this works
+		JsonObject receivedDamageUpdate = new JsonObject();
+		hero.setCurrentHealth(hero.getCurrentHealth() - 1);
+		if(hero.getCurrentHealth() <= 0) {
+			hero.setDeceased(true);
+			receivedDamageUpdate.addProperty("isDeceased", true);
+		}
+		receivedDamageUpdate.addProperty("currentHealth", hero.getCurrentHealth());
+		
 		// Send updated boss info
 		messenger.convertAndSend("/global/boss.status", new BossStatusMessage(boss));
 		
@@ -108,6 +124,7 @@ public class BossController {
 		JsonObject updates = addCharacterXp(hero, 1);
 		JsonArray updatesArr = new JsonArray();
 		updatesArr.add(updates);
+		updatesArr.add(receivedDamageUpdate);
 		messenger.convertAndSendToUser(principal.getName(), "/local/character", gson.toJson(new CharacterUpdateMessage(updatesArr)));
 		messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(2.0));
 	}
@@ -118,7 +135,10 @@ public class BossController {
 			var contributor = characterRepository.getById(entry.getKey());
 			var contrib = entry.getValue();
 			
-			// TODO: check if the contributor hero died
+			// Make sure the contrubting hero is not dead
+			if(contributor.isDeceased()) {
+				continue;
+			}
 			
 			int xpGained = 5 + (contrib.dealtKillingBlow() ? 5 : 0);
 			
