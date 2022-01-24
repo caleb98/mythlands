@@ -1,4 +1,4 @@
-package net.calebscode.heroland.character;
+package net.calebscode.heroland.core;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -8,8 +8,6 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-
-import net.calebscode.heroland.user.HerolandUser;
 
 @Entity
 @Table(name="characters")
@@ -26,9 +24,9 @@ public class HerolandCharacter {
 	@Column(nullable = false) private boolean isDeceased = false;
 	
 	@Column(nullable = false) private int maxHealth = 10;
-	@Column(nullable = false) private int currentHealth = 10;
+	@Column(nullable = false) private double currentHealth = 10;
 	@Column(nullable = false) private int maxMana = 10;
-	@Column(nullable = false) private int currentMana = 10;
+	@Column(nullable = false) private double currentMana = 10;
 	
 	@Column(nullable = false) private int strength = 1;
 	@Column(nullable = false) private int dexterity = 1;
@@ -104,14 +102,24 @@ public class HerolandCharacter {
 		this.maxHealth = maxHealth;
 	}
 
-	public int getCurrentHealth() {
+	public double getCurrentHealth() {
 		return currentHealth;
 	}
 
-	public void setCurrentHealth(int currentHealth) {
+	public void setCurrentHealth(double currentHealth) {
 		this.currentHealth = currentHealth;
 	}
 
+	public void modifyCurrentHealth(double amount) {
+		currentHealth += amount;
+		if(currentHealth < 0) {
+			currentHealth = 0;
+		}
+		else if(currentHealth > maxHealth) {
+			currentHealth = maxHealth;
+		}
+	}
+	
 	public int getMaxMana() {
 		return maxMana;
 	}
@@ -120,12 +128,22 @@ public class HerolandCharacter {
 		this.maxMana = maxMana;
 	}
 
-	public int getCurrentMana() {
+	public double getCurrentMana() {
 		return currentMana;
 	}
 
-	public void setCurrentMana(int currentMana) {
+	public void setCurrentMana(double currentMana) {
 		this.currentMana = currentMana;
+	}
+	
+	public void modifyCurrentMana(double amount) {
+		currentMana += amount;
+		if(currentMana < 0) {
+			currentMana = 0;
+		}
+		else if(currentMana > maxMana) {
+			currentMana = maxMana;
+		}
 	}
 
 	public int getStrength() {

@@ -1,4 +1,4 @@
-package net.calebscode.heroland.user;
+package net.calebscode.heroland.core;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,8 +13,6 @@ import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-
-import net.calebscode.heroland.character.HerolandCharacter;
 
 @Entity
 @Table(name = "users")

@@ -4,10 +4,10 @@ import java.util.List;
 
 public class CharacterList {
 
-	public final List<CharacterListEntry> characters;
+	public final List<HerolandCharacterDTO> characters;
 	public final int activeCharacterId;
 	
-	public CharacterList(List<CharacterListEntry> characters, int activeCharacterId) {
+	public CharacterList(List<HerolandCharacterDTO> characters, int activeCharacterId) {
 		this.characters = characters;
 		this.activeCharacterId = activeCharacterId;
 	}

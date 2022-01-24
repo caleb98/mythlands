@@ -1,4 +1,4 @@
-package net.calebscode.heroland;
+package net.calebscode.heroland.core;
 
 public class ContributionInfo {
 

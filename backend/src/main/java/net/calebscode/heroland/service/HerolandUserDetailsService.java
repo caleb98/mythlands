@@ -1,14 +1,18 @@
-package net.calebscode.heroland.user;
+package net.calebscode.heroland.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
+import net.calebscode.heroland.core.HerolandUser;
+import net.calebscode.heroland.core.HerolandUserDetails;
+import net.calebscode.heroland.repository.HerolandUserRepository;
+
 public class HerolandUserDetailsService implements UserDetailsService {
 
 	@Autowired
-	private UserRepository userRepository;
+	private HerolandUserRepository userRepository;
 	
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

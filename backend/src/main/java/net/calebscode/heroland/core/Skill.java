@@ -1,4 +1,4 @@
-package net.calebscode.heroland.character;
+package net.calebscode.heroland.core;
 
 public enum Skill {
 	STRENGTH,

@@ -16,7 +16,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import net.calebscode.heroland.user.HerolandUserDetailsService;
+import net.calebscode.heroland.service.HerolandUserDetailsService;
 
 @Configuration
 @EnableWebSecurity

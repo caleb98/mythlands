@@ -1,8 +1,8 @@
 package net.calebscode.heroland.response.dto;
 
-import net.calebscode.heroland.character.HerolandCharacter;
+import net.calebscode.heroland.core.HerolandCharacter;
 
-public class CharacterListEntry {
+public class HerolandCharacterDTO {
 	
 	public final int id;
 	
@@ -14,9 +14,9 @@ public class CharacterListEntry {
 	public final boolean isDeceased;
 	
 	public final int maxHealth;
-	public final int currentHealth;
+	public final double currentHealth;
 	public final int maxMana;
-	public final int currentMana;
+	public final double currentMana;
 	
 	public final int strength;
 	public final int dexterity;
@@ -26,8 +26,9 @@ public class CharacterListEntry {
 	public final int resistance;
 	
 	public final int skillPoints;
+	public final long attackReady;
 	
-	public CharacterListEntry(HerolandCharacter hc) {
+	public HerolandCharacterDTO(HerolandCharacter hc) {
 		id = hc.getId();
 		
 		firstName = hc.getFirstName();
@@ -50,6 +51,7 @@ public class CharacterListEntry {
 		resistance = hc.getResistance();
 		
 		skillPoints = hc.getSkillPoints();
+		attackReady = hc.getAttackReady();
 	}
 	
 }

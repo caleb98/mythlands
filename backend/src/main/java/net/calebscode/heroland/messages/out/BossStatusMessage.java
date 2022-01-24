@@ -1,6 +1,6 @@
 package net.calebscode.heroland.messages.out;
 
-import net.calebscode.heroland.Boss;
+import net.calebscode.heroland.core.Boss;
 
 public class BossStatusMessage {
 

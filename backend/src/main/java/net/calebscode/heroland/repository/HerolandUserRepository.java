@@ -1,16 +1,15 @@
-package net.calebscode.heroland.user;
+package net.calebscode.heroland.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import net.calebscode.heroland.core.HerolandUser;
+
 @Repository
-public interface UserRepository extends JpaRepository<HerolandUser, Integer> {
+public interface HerolandUserRepository extends JpaRepository<HerolandUser, Integer> {
 	
-	//@Query("SELECT u FROM HerolandUser u WHERE u.email = ?1")
 	HerolandUser findByEmail(String email);
-	
-	//@Query("SELECT u FROM HerolandUser u WHERE u.username = ?1")
 	HerolandUser findByUsername(String username);
 	
 }

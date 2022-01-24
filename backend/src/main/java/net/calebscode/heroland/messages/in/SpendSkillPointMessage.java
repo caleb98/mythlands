@@ -1,6 +1,6 @@
 package net.calebscode.heroland.messages.in;
 
-import net.calebscode.heroland.character.Skill;
+import net.calebscode.heroland.core.Skill;
 
 public class SpendSkillPointMessage {
 
