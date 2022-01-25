@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="framed p-3">
 		<h4>Register</h4>
 		<form id="registration-form">
 
@@ -125,5 +125,12 @@ export default {
 <style scoped>
 .clickable {
 	cursor: pointer;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+	-webkit-box-shadow: 0 0 0 30px white inset !important;
 }
 </style>
