@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.JsonObject;
 
-import net.calebscode.heroland.core.HerolandCharacter;
-import net.calebscode.heroland.core.HerolandUser;
+import net.calebscode.heroland.entity.HerolandCharacter;
+import net.calebscode.heroland.entity.HerolandUser;
 import net.calebscode.heroland.exception.CharacterCreationException;
 import net.calebscode.heroland.exception.NoActiveCharacterException;
 import net.calebscode.heroland.exception.UserNotFoundException;

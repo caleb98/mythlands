@@ -30,48 +30,48 @@
 				</div>
 				<i class="username">{{userInfo.username}}</i>
 			</div>
-			<div class="row mb-3 align-items-center">
+			<div class="row mb-3 align-items-center mx-0">
 				<div class="col-4 p-0">
 					<div class="mb-2"><b>Level {{activeCharacter.level}}</b></div>
 					<img src="../assets/hero.png" width="64" height="64" class="pixel-image">
 				</div>
 				<div class="col-8 p-0">
-					<table class="table align-middle stats-table mb-0">
+					<table class="table align-middle stats-table mb-0 clean-text">
 						<tbody>
 							<tr>
-								<td class="text-start"><b>STR</b></td>
+								<td class="text-start"><b>Strength</b></td>
 								<td class="text-end">{{activeCharacter.strength}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('STRENGTH')">add</span>
 								</td>
 
-								<td class="text-start"><b>TGH</b></td>
+								<td class="text-start ps-4"><b>Toughness</b></td>
 								<td class="text-end">{{activeCharacter.toughness}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('TOUGHNESS')">add</span>
 								</td>
 							</tr>
 							<tr>
-								<td class="text-start"><b>DEX</b></td>
+								<td class="text-start"><b>Dexterity</b></td>
 								<td class="text-end">{{activeCharacter.dexterity}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('DEXTERITY')">add</span>
 								</td>
 
-								<td class="text-start"><b>AVD</b></td>
+								<td class="text-start ps-4"><b>Avoidance</b></td>
 								<td class="text-end">{{activeCharacter.avoidance}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('AVOIDANCE')">add</span>
 								</td>
 							</tr>
 							<tr>
-								<td class="text-start"><b>ATT</b></td>
+								<td class="text-start"><b>Attunement</b></td>
 								<td class="text-end">{{activeCharacter.attunement}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('ATTUNEMENT')">add</span>
 								</td>
 
-								<td class="text-start"><b>RES</b></td>
+								<td class="text-start ps-4"><b>Resistance</b></td>
 								<td class="text-end">{{activeCharacter.resistance}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('RESISTANCE')">add</span>
@@ -109,7 +109,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="container framed p-2">
+		<div class="container-fluid framed p-2">
 			<div class="row">
 				<div class="col-auto" v-if="isCharacterDeceased && !showCharacterCreator">
 					<button @click="showCharacterCreator = true" class="btn btn-primary">New Character</button>
@@ -229,11 +229,11 @@ export default {
 		},
 
 		healthString() {
-			return this.activeCharacter.currentHealth + " / " + this.activeCharacter.maxHealth;
+			return parseFloat(this.activeCharacter.currentHealth.toFixed(2)) + " / " + this.activeCharacter.maxHealth;
 		},
 
 		manaString() {
-			return this.activeCharacter.currentMana + " / " + this.activeCharacter.maxMana;
+			return parseFloat(this.activeCharacter.currentMana.toFixed(2)) + " / " + this.activeCharacter.maxMana;
 		},
 
 		xpString() {
@@ -374,13 +374,12 @@ export default {
 .progress-bar-title {
 	position: absolute;
 	text-align: center;
-	line-height: 20px;
 	overflow: hidden;
 	right: 0;
 	left: 0;
-	top: 0;
+	top: -2px;
 	color: black;
-	font-size: 16px;
+	font-size: 12px;
 	font-weight: bold;
 }
 
@@ -408,8 +407,9 @@ export default {
 
 }
 
-.stats-table tr {
+.stats-table td {
 	border-bottom-width: 0px;
+	padding: 2px 4px 2px 4px;
 }
 
 .text-skill-points {

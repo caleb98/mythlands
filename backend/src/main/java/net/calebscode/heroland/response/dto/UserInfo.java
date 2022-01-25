@@ -1,6 +1,6 @@
 package net.calebscode.heroland.response.dto;
 
-import net.calebscode.heroland.core.HerolandUser;
+import net.calebscode.heroland.entity.HerolandUser;
 
 public class UserInfo {
 

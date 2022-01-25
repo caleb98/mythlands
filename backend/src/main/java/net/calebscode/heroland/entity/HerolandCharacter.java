@@ -1,4 +1,4 @@
-package net.calebscode.heroland.core;
+package net.calebscode.heroland.entity;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;

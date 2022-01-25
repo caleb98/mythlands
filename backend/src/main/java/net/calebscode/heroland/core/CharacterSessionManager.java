@@ -3,8 +3,6 @@ package net.calebscode.heroland.core;
 import java.util.HashMap;
 import java.util.concurrent.Future;
 
-import javax.transaction.Transactional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
@@ -125,12 +123,10 @@ public class CharacterSessionManager {
 					return;
 				}
 				
-				System.out.printf("%s regenning from %.2f\n", heroDto.firstName, heroDto.currentHealth);
-				double regenAmount = 1 + (heroDto.level - 1) * 0.5;
+				double regenAmount = 1 + (heroDto.level - 1) * 0.2;
 				JsonObject hpRegen = characterService.gainHealth(heroDto.id, regenAmount);
 				JsonObject manaRegen = characterService.gainMana(heroDto.id, regenAmount);
 				heroDto = userService.getActiveCharacter(username);
-				System.out.printf("%s regenned to %.2f (+%.2f)\n", heroDto.firstName, heroDto.currentHealth, regenAmount);
 				
 				// If the hp/mana regen changed anything, send the updates
 				if(hpRegen.entrySet().size() > 0 || manaRegen.entrySet().size() > 0) {

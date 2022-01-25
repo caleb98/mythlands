@@ -1,14 +1,12 @@
 <template>
 	<div class="container mb-3">
 		<div class="row">
-			<h1 class="text-center">Heroland</h1>
+			<h1 class="text-center" style="font-family: 'Mochiy Pop P One', sans-serif;">Mythlands</h1>
 		</div>
-	</div>
 	
-	<!-- Boss Frame -->
-	<div class="container mb-3" id="game-container">
+		<!-- Boss Frame -->
 		<div v-if="bossInfo.name" class="row justify-content-center">
-			<div class="col-6">
+			<div class="col-12 col-lg-6">
 				<h4 class="text-center">{{bossInfo.name}}</h4>
 				<div class="progress" style="height: 40px">
 					<div class="progress-bar bg-health" role="progressbar" :style="{ width: bossHealthWidth + '%'}"></div>
@@ -16,22 +14,23 @@
 				<p class="text-center">{{bossInfo.currentHealth}} / {{bossInfo.maxHealth}}</p>
 			</div>
 		</div>
-	</div>
-
-	<div class="container mb-3">
 
 		<!-- Main Content -->
 		<div class="row justify-content-center">
-			<div class="col-6">
+			<div class="col-12 col-lg-6 mb-2">
 				<transition name="component-fade" mode="out-in">
 					<component v-if="activeView" :is="activeView" v-on="viewData.listeners" v-bind="viewData.properties"></component>
 				</transition>
+			</div>
+
+			<div class="col-12 col-lg-6">
+				<ChatComponent />
 			</div>
 		</div>
 
 		<!-- Messages -->
 		<div class="row justify-content-center">
-			<div class="col-6">
+			<div class="col-12 col-lg-6">
 				<table class="table table-striped">
 					<thead>
 						<tr>
@@ -58,6 +57,7 @@ import WS from './services/wsclient';
 import LoginComponent from './components/LoginComponent.vue';
 import RegisterComponent from './components/RegisterComponent.vue';
 import PlayerDashboard from './components/PlayerDashboard.vue';
+import ChatComponent from './components/ChatComponent.vue';
 
 // Setup csrf token
 $(function () {
@@ -70,10 +70,11 @@ $(function () {
 export default {
 	name: 'App',
 	components: {
-		LoginComponent,
-		RegisterComponent,
-		PlayerDashboard
-	},
+    LoginComponent,
+    RegisterComponent,
+    PlayerDashboard,
+    ChatComponent
+},
 	data() {
 		return {
 			isLoggedIn: false,
@@ -206,7 +207,7 @@ export default {
 
 <style>
 #app {
-	font-family: Avenir, Helvetica, Arial, sans-serif;
+	font-family: 'Mochiy Pop P One', Helvetica, Arial, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	text-align: center;

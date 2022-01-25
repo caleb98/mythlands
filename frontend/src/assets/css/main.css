@@ -56,3 +56,7 @@ body {
 .clickable {
 	cursor: pointer;
 }
+
+.clean-text {
+	font-family: 'Rubik', sans-serif;
+}

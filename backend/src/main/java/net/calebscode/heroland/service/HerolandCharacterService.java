@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.JsonObject;
 
-import net.calebscode.heroland.core.HerolandCharacter;
+import net.calebscode.heroland.entity.HerolandCharacter;
 import net.calebscode.heroland.exception.CharacterNotFoundException;
 import net.calebscode.heroland.messages.in.SpendSkillPointMessage;
 import net.calebscode.heroland.repository.HerolandCharacterRepository;

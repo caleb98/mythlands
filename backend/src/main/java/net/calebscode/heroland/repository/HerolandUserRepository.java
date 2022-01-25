@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import net.calebscode.heroland.core.HerolandUser;
+import net.calebscode.heroland.entity.HerolandUser;
 
 @Repository
 public interface HerolandUserRepository extends JpaRepository<HerolandUser, Integer> {

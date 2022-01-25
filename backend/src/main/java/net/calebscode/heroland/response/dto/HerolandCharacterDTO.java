@@ -1,6 +1,6 @@
 package net.calebscode.heroland.response.dto;
 
-import net.calebscode.heroland.core.HerolandCharacter;
+import net.calebscode.heroland.entity.HerolandCharacter;
 
 public class HerolandCharacterDTO {
 	

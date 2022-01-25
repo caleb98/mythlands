@@ -6,6 +6,8 @@ import java.util.Collection;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import net.calebscode.heroland.entity.HerolandUser;
+
 public class HerolandUserDetails implements UserDetails {
 
 	private static final long serialVersionUID = 6391129448758873453L;

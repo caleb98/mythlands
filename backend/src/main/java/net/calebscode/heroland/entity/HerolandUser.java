@@ -1,4 +1,4 @@
-package net.calebscode.heroland.core;
+package net.calebscode.heroland.entity;
 
 import java.util.ArrayList;
 import java.util.List;
