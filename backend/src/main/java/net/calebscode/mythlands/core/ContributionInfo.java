@@ -2,10 +2,23 @@ package net.calebscode.mythlands.core;
 
 public class ContributionInfo {
 
+	private String username;
 	private int totalDamage = 0;
 	private int numAttacks = 0;
 	private boolean dealtKillingBlow = false;
 	
+	public ContributionInfo(String username) {
+		this.username = username;
+	}
+	
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
 	public int getTotalDamage() {
 		return totalDamage;
 	}

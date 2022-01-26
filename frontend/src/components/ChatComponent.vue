@@ -3,11 +3,11 @@
 		<form>
 			<div class="row">
 				<div class="col-12">
-					<h6 class="m-1">Chat {{scrollPos}}</h6>
+					<h6 class="m-1">Chat</h6>
 					<!-- Chat Box Div -->
 					<div id="chat-frame" class="m-1 chat-box clean-text text-start px-1">
 						<div id="chat-container">
-							<p v-for="message in messages" :key="message.id">
+							<p v-for="message in messages" :key="message.id" class="chat-message" :data-user="message.username">
 								<b>{{message.timestamp}} [{{message.username}}]:</b> {{message.message}}
 							</p>
 						</div>

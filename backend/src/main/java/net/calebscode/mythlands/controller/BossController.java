@@ -91,7 +91,7 @@ public class BossController {
 			// Do the attack
 			boss.damage(1); //TODO: damage calculation
 			if(!contribs.containsKey(heroDto.id)) {
-				contribs.put(heroDto.id, new ContributionInfo());
+				contribs.put(heroDto.id, new ContributionInfo(principal.getName()));
 			}
 			var info = contribs.get(heroDto.id);
 			info.addTotalDamage(1);
@@ -146,7 +146,12 @@ public class BossController {
 			// Add their xp
 			int xpGained = 5 + (contrib.dealtKillingBlow() ? 5 : 0);
 			try {
-				characterService.grantXp(heroId, xpGained);
+				JsonObject updates = characterService.grantXp(heroId, xpGained);
+				messenger.convertAndSendToUser(
+						contrib.getUsername(),
+						"/local/character", 
+						gson.toJson(new CharacterUpdateMessage(updates))
+				);
 			} catch (CharacterNotFoundException e) {
 				// TODO: Log this error or handle it more gracefully (shouldn't happen in production, though)
 			}

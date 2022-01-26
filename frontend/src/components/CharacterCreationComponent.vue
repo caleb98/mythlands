@@ -4,8 +4,8 @@
 		<form id="character-creation-form">
 
 			<div class="mb-3">
-				<input type="text" class="form-control mb-1 text-center" id="character-creation-firstname" v-model="firstName" placeholder="First Name">
-				<input type="text" class="form-control text-center" id="character-creation-lastname" v-model="lastName" placeholder="Last Name">
+				<input type="text" class="form-control mb-1 text-center" id="character-creation-firstname" v-model="firstName" placeholder="First Name" autocomplete="off">
+				<input type="text" class="form-control text-center" id="character-creation-lastname" v-model="lastName" placeholder="Last Name" autocomplete="off">
 				<div v-if="helpMessage" class="form-text text-danger">{{helpMessage}}</div>
 			</div>
 

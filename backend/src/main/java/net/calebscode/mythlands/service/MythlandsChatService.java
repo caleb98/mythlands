@@ -29,17 +29,9 @@ public class MythlandsChatService {
 	@Autowired private MythlandsUserRepository userRepository;
 	
 	@Transactional
-	public ChatMessageDTO logMessage(int userId, int groupId, String messageText) 
-			throws UserNotFoundException, ChatGroupNotFoundException {
-		MythlandsUser user = userRepository.findById(userId).orElse(null);
-		if(user == null)  {
-			throw new UserNotFoundException("User with id " + userId + " not found.");
-		}
-		
-		ChatGroup group = groupRepository.findById(groupId).orElse(null);
-		if(group == null) {
-			throw new ChatGroupNotFoundException("Chat group with id " + groupId + " not found.");
-		}
+	public ChatMessageDTO logMessage(int userId, int groupId, String messageText) throws UserNotFoundException, ChatGroupNotFoundException {
+		MythlandsUser user = getUser(userId);
+		ChatGroup group = getGroup(groupId);
 		
 		ChatMessage message = new ChatMessage();
 		message.setTimestamp(Instant.now());
@@ -49,6 +41,19 @@ public class MythlandsChatService {
 		message = chatRepository.save(message);
 		
 		return new ChatMessageDTO(message);
+	}
+	
+	@Transactional
+	public void addUserToGroup(int userId, int groupId) throws ChatGroupNotFoundException, UserNotFoundException {
+		MythlandsUser user = getUser(userId);
+		ChatGroup group = getGroup(groupId);
+		group.getUsers().add(user);
+	}
+	
+	@Transactional
+	public void removeUserFromGroup(int userId, int groupId) throws ChatGroupNotFoundException {
+		ChatGroup group = getGroup(groupId);
+		group.getUsers().removeIf(u -> u.getId() == userId);
 	}
 	
 	@Transactional
@@ -65,6 +70,14 @@ public class MythlandsChatService {
 	public boolean hasChatPermissions(int userId, int groupId) throws ChatGroupNotFoundException {
 		ChatGroup group = getGroup(groupId);
 		return group.hasUser(userId);
+	}
+	
+	private MythlandsUser getUser(int userId) throws UserNotFoundException {
+		MythlandsUser user = userRepository.findById(userId).orElse(null);
+		if(user == null)  {
+			throw new UserNotFoundException("User with id " + userId + " not found.");
+		}
+		return user;
 	}
 	
 	private ChatGroup getGroup(int groupId) throws ChatGroupNotFoundException {

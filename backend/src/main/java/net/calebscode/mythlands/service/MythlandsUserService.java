@@ -18,6 +18,7 @@ import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.entity.MythlandsUser;
 import net.calebscode.mythlands.exception.CharacterCreationException;
+import net.calebscode.mythlands.exception.ChatGroupNotFoundException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.exception.UserRegistrationException;
@@ -34,6 +35,7 @@ public class MythlandsUserService {
 	public static final Pattern VALID_USERNAME_REGEX = 
 			Pattern.compile("^[A-Za-z0-9]*$");
 	
+	@Autowired private MythlandsChatService chatService;
 	@Autowired private MythlandsUserRepository userRepository;
 	@Autowired private MythlandsCharacterRepository characterRepository;
 	@Autowired private BCryptPasswordEncoder passwordEncoder;
@@ -87,8 +89,15 @@ public class MythlandsUserService {
 		user.setEmail(email);
 		user.setPasswordHash(encodedPassword);
 		user.getAuthorities().add("ROLE_PLAYER");
-		userRepository.save(user);
+		user = userRepository.save(user);
 		
+		// Register the user in the global chat channel
+		try {
+			chatService.addUserToGroup(user.getId(), 1);
+		} catch (ChatGroupNotFoundException | UserNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	@Transactional
