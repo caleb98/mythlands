@@ -123,7 +123,7 @@
 </template>
 
 <script>
-import { map, filter } from 'rxjs/operators'
+import { map } from 'rxjs/operators'
 import $ from 'jquery';
 import WS from '../services/wsclient';
 import CharacterCreationComponent from './CharacterCreationComponent.vue';

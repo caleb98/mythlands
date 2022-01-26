@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.JsonObject;
 
+import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
+import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.entity.MythlandsUser;
 import net.calebscode.mythlands.exception.CharacterCreationException;
@@ -20,11 +22,9 @@ import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.exception.UserRegistrationException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
+import net.calebscode.mythlands.messages.out.CharacterListMessage;
 import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
 import net.calebscode.mythlands.repository.MythlandsUserRepository;
-import net.calebscode.mythlands.response.dto.CharacterList;
-import net.calebscode.mythlands.response.dto.MythlandsCharacterDTO;
-import net.calebscode.mythlands.response.dto.UserInfo;
 
 @Service
 public class MythlandsUserService {
@@ -170,8 +170,8 @@ public class MythlandsUserService {
 		return updates;
 	}
 	
-	public UserInfo getUserInfo(String username) throws UserNotFoundException {
-		return new UserInfo(getUser(username));
+	public MythlandsUserDTO getUserInfo(String username) throws UserNotFoundException {
+		return new MythlandsUserDTO(getUser(username));
 	}
 	
 	public MythlandsCharacterDTO getActiveCharacter(String username) throws UserNotFoundException, NoActiveCharacterException {
@@ -183,7 +183,7 @@ public class MythlandsUserService {
 		return new MythlandsCharacterDTO(hero);
 	}
 	
-	public CharacterList getCharacterList(String username) throws UserNotFoundException {
+	public CharacterListMessage getCharacterList(String username) throws UserNotFoundException {
 		MythlandsUser user = getUser(username);
 		
 		List<MythlandsCharacterDTO> characters = user.getCharacters().stream()
@@ -191,7 +191,7 @@ public class MythlandsUserService {
 		MythlandsCharacter active = user.getActiveCharacter();
 		int activeCharacterId = active == null ? -1 : active.getId();
 		
-		return new CharacterList(characters, activeCharacterId);
+		return new CharacterListMessage(characters, activeCharacterId);
 	}
 	
 	private MythlandsUser getUser(String username) throws UserNotFoundException {

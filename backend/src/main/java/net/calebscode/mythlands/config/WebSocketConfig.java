@@ -34,6 +34,7 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
 			.simpMessageDestMatchers("/local/**").hasRole("PLAYER")
 			
 			// Subscribe permissions
+			.simpSubscribeDestMatchers("/global/chat").hasRole("PLAYER")
 			.simpSubscribeDestMatchers("/global/**").permitAll()
 			.simpSubscribeDestMatchers("/local/**").hasRole("PLAYER")
 			.simpSubscribeDestMatchers("/user/**").hasRole("PLAYER");

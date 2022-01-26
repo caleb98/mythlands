@@ -15,10 +15,11 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
+import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
+import net.calebscode.mythlands.dto.MythlandsUserDTO;
+import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
-import net.calebscode.mythlands.response.dto.MythlandsCharacterDTO;
-import net.calebscode.mythlands.response.dto.UserInfo;
 import net.calebscode.mythlands.service.MythlandsCharacterService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
@@ -40,7 +41,7 @@ public class CharacterSessionManager {
 	@EventListener
 	public void onApplicationEvent(SessionConnectedEvent event) {		
 		if(event.getUser() != null) {
-			UserInfo info;
+			MythlandsUserDTO info;
 			try {
 				info = userService.getUserInfo(event.getUser().getName());
 			} catch (UserNotFoundException e) {
@@ -62,7 +63,7 @@ public class CharacterSessionManager {
 	//@EventListener
 	public void onApplicationEvent(SessionDisconnectEvent event) {
 		if(event.getUser() != null) {
-			UserInfo info;
+			MythlandsUserDTO info;
 			try {
 				info = userService.getUserInfo(event.getUser().getName());
 			} catch (UserNotFoundException e) {
@@ -117,8 +118,13 @@ public class CharacterSessionManager {
 		void updateHero() {
 			try {
 				updateTimer -= HERO_UPDATE_INTERVAL;
-				MythlandsCharacterDTO heroDto = userService.getActiveCharacter(username);
-				
+				MythlandsCharacterDTO heroDto;
+				try {
+					heroDto = userService.getActiveCharacter(username);
+				} catch (NoActiveCharacterException e) {
+					return;
+				}
+					
 				if(heroDto.isDeceased) {
 					return;
 				}

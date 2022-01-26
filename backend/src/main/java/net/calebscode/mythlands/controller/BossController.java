@@ -17,6 +17,7 @@ import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.core.Boss;
 import net.calebscode.mythlands.core.ContributionInfo;
+import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
@@ -26,7 +27,6 @@ import net.calebscode.mythlands.messages.out.BossStatusMessage;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.CooldownMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
-import net.calebscode.mythlands.response.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.service.MythlandsCharacterService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 

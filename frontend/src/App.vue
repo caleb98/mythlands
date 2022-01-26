@@ -23,7 +23,7 @@
 				</transition>
 			</div>
 
-			<div class="col-12 col-lg-6">
+			<div class="col-12 col-lg-6" v-if="isLoggedIn">
 				<ChatComponent />
 			</div>
 		</div>

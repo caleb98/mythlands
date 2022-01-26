@@ -20,10 +20,10 @@ import net.calebscode.mythlands.exception.CharacterCreationException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
+import net.calebscode.mythlands.messages.out.CharacterListMessage;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
 import net.calebscode.mythlands.response.ServerResponse;
-import net.calebscode.mythlands.response.dto.CharacterList;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
@@ -52,7 +52,7 @@ public class MythlandsCharacterController {
 	@GetMapping("/character/list")
 	public @ResponseBody ServerResponse listCharacters(Principal principal) {
 		try {
-			CharacterList list = userService.getCharacterList(principal.getName());
+			CharacterListMessage list = userService.getCharacterList(principal.getName());
 			return new ServerResponse("Success!", list);
 		} catch (UserNotFoundException e) {
 			return new ServerResponse(e.getMessage(), true);

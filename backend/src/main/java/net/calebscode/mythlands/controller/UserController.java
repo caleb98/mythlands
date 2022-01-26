@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.exception.UserRegistrationException;
 import net.calebscode.mythlands.response.ServerResponse;
-import net.calebscode.mythlands.response.dto.UserInfo;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
@@ -29,7 +29,7 @@ public class UserController {
 		}
 		
 		try {
-			UserInfo info = userService.getUserInfo(auth.getName());
+			MythlandsUserDTO info = userService.getUserInfo(auth.getName());
 			return new ServerResponse("Success!", info);
 		} catch (UserNotFoundException e) {
 			return new ServerResponse(e.getMessage(), true);

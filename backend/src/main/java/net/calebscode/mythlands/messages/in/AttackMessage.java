@@ -4,7 +4,7 @@ public class AttackMessage {
 
 	public final int bossId;
 	
-	public AttackMessage() { 
+	public AttackMessage() {
 		bossId = -1;
 	}
 	

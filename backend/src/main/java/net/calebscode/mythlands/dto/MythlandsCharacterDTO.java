@@ -1,4 +1,4 @@
-package net.calebscode.mythlands.response.dto;
+package net.calebscode.mythlands.dto;
 
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 
