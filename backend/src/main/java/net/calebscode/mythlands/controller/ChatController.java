@@ -12,6 +12,7 @@ import net.calebscode.mythlands.dto.ChatMessageDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.exception.ChatGroupNotFoundException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
+import net.calebscode.mythlands.messages.in.ChatReportMessage;
 import net.calebscode.mythlands.messages.in.SendChatMessage;
 import net.calebscode.mythlands.messages.out.EchoChatMessage;
 import net.calebscode.mythlands.service.MythlandsChatService;
@@ -26,54 +27,46 @@ public class ChatController {
 	@Autowired private SimpMessagingTemplate messenger;
 
 	@MessageMapping("/chat")
-	public void handleChatMessage(SendChatMessage message, Principal principal) {
-		String cleanedMessage = message.message.trim();
-		if(cleanedMessage.isBlank()) {
-			return;
-		}
-		
-		MythlandsUserDTO user;
+	public void handleChatMessage(SendChatMessage message, Principal principal) {		
 		try {
-			user = userService.getUserInfo(principal.getName());
-		} catch (UserNotFoundException e) {
-			e.printStackTrace();
-			return;
-		}
-		
-		try {
+			
+			String cleanedMessage = message.message.trim();
+			if(cleanedMessage.isBlank()) {
+				return;
+			}
+			
+			MythlandsUserDTO user = userService.getUserInfo(principal.getName());
 			if(!chatService.hasChatPermissions(user.id, message.groupId)) {
 				// TODO: send error message to user
 				return;
 			}
-		} catch (ChatGroupNotFoundException e) {
-			e.printStackTrace();
-			return;
-		}
-		
-		ChatMessageDTO messageDto;
-		try {
-			messageDto = chatService.logMessage(user.id, message.groupId, cleanedMessage);
+			
+			ChatMessageDTO messageDto = chatService.logMessage(user.id, message.groupId, cleanedMessage);
+			Set<MythlandsUserDTO> sendToUsers = chatService.getGroupUsers(messageDto.groupId);
+			
+			for(MythlandsUserDTO sendTo : sendToUsers) {
+				messenger.convertAndSendToUser(
+					sendTo.username, 
+					"/local/chat",
+					new EchoChatMessage(messageDto)
+				);
+			}
+			
 		} catch (UserNotFoundException | ChatGroupNotFoundException e) {
-			// TODO: send error message to user
 			e.printStackTrace();
 			return;
 		}
-		
-		Set<MythlandsUserDTO> sendToUsers;
+	}
+	
+	@MessageMapping("/chat.report")
+	public void handleChatReport(ChatReportMessage report, Principal principal) {
 		try {
-			sendToUsers = chatService.getGroupUsers(messageDto.groupId);
-		} catch (ChatGroupNotFoundException e) {
-			// TODO Auto-generated catch block
+			MythlandsUserDTO user = userService.getUserInfo(principal.getName());
+			chatService.addChatReport(report.messageId, user.id);
+			// TODO: send confirmation for report
+		} catch (UserNotFoundException e) {
+			// TODO send report fail?
 			e.printStackTrace();
-			return;
-		}
-		
-		for(MythlandsUserDTO sendTo : sendToUsers) {
-			messenger.convertAndSendToUser(
-				sendTo.username, 
-				"/local/chat",
-				new EchoChatMessage(messageDto)
-			);
 		}
 	}
 	

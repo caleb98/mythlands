@@ -14,7 +14,7 @@ var wsClientConfig = {
 		});
 	},
 	debug(str) {
-		console.log("STOMP: " + str);
+		// console.log("STOMP: " + str);
 	},
 	reconnectDelay: 5000,
 };

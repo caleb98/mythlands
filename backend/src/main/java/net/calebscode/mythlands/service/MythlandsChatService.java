@@ -11,19 +11,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import net.calebscode.mythlands.dto.ChatMessageDTO;
+import net.calebscode.mythlands.dto.ChatReportDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.entity.ChatGroup;
 import net.calebscode.mythlands.entity.ChatMessage;
+import net.calebscode.mythlands.entity.ChatReport;
 import net.calebscode.mythlands.entity.MythlandsUser;
 import net.calebscode.mythlands.exception.ChatGroupNotFoundException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.repository.MythlandsChatGroupRepository;
+import net.calebscode.mythlands.repository.MythlandsChatReportRepository;
 import net.calebscode.mythlands.repository.MythlandsChatRepository;
 import net.calebscode.mythlands.repository.MythlandsUserRepository;
 
 @Service
 public class MythlandsChatService {
 
+	@Autowired private MythlandsChatReportRepository reportRepository;
 	@Autowired private MythlandsChatRepository chatRepository;
 	@Autowired private MythlandsChatGroupRepository groupRepository;
 	@Autowired private MythlandsUserRepository userRepository;
@@ -70,6 +74,20 @@ public class MythlandsChatService {
 	public boolean hasChatPermissions(int userId, int groupId) throws ChatGroupNotFoundException {
 		ChatGroup group = getGroup(groupId);
 		return group.hasUser(userId);
+	}
+	
+	@Transactional
+	public ChatReportDTO addChatReport(int messageId, int userId) throws UserNotFoundException {
+		MythlandsUser user = getUser(userId);
+		ChatMessage message = chatRepository.findById(messageId).orElse(null);
+		if(message == null) {
+			return null;
+		}
+		
+		ChatReport report = new ChatReport(message, user);
+		report = reportRepository.save(report);
+		
+		return new ChatReportDTO(report);
 	}
 	
 	private MythlandsUser getUser(int userId) throws UserNotFoundException {

@@ -1,5 +1,8 @@
 <template>
 	<div class="framed">
+		<Dialog :show="showReportDialog" :title="reportDialogTitle" :inner-html="reportDialogText" :buttons="reportButtons" />
+		<ContextMenu :show="showMenu" :menu-id="menuId" 
+			:x-pos="xPos" :y-pos="yPos" :options="menuOptions" @context-menu-close="showMenu = false" />
 		<form>
 			<div class="row">
 				<div class="col-12">
@@ -7,7 +10,7 @@
 					<!-- Chat Box Div -->
 					<div id="chat-frame" class="m-1 chat-box clean-text text-start px-1">
 						<div id="chat-container">
-							<p v-for="message in messages" :key="message.id" class="chat-message" :data-user="message.username">
+							<p v-for="message in messages" :key="message.id" class="chat-message" :data-username="message.username" :data-message-id="message.id">
 								<b>{{message.timestamp}} [{{message.username}}]:</b> {{message.message}}
 							</p>
 						</div>
@@ -30,76 +33,142 @@
 import $ from 'jquery';
 import WS from '../services/wsclient';
 import { map } from 'rxjs/operators';
+import ContextMenu from './ContextMenu.vue';
+import Dialog from './Dialog.vue';
 
 export default {
-	name: 'ChatComponent',
+    name: "ChatComponent",
+    props: {
+        isLoggedIn: Boolean
+    },
+    data() {
+        return {
+			// Chat box data
+            messages: [],
+            messageText: "",
+            timeFormatter: new Intl.DateTimeFormat([], {
+                hour12: true,
+                hour: "numeric",
+                minute: "numeric",
+                second: "numeric"
+            }),
+            scrollTop: 0,
 
-	props: {
-		isLoggedIn: Boolean
-	},
+			// Context menu data
+			menuId: "chat-context-menu",
+			showMenu: false,
+			xPos: 0,
+			yPos: 0,
+			menuOptions: null, // Set up menu options in mounted() when we have access to 'this'
+			selectedMessageId: -1,
+			selectedMessageUser: "",
 
-	data() {
-		return {
-			messages: [],
-			messageText: "",
-			timeFormatter: new Intl.DateTimeFormat([], {
-				hour12: true,
-				hour: "numeric",
-				minute: "numeric",
-				second: "numeric"
-			}),
-			scrollTop: 0,
+			// Report menu data
+			showReportDialog: false,
+			reportButtons: null // Setup in mounted()
+
+        };
+    },
+
+    methods: {
+        sendMessage() {
+            WS.publish({
+                destination: "/game/chat",
+                body: JSON.stringify({
+                    groupId: 1,
+                    message: this.messageText
+                })
+            });
+            this.messageText = "";
+        },
+        getScrollPercentage() {
+            return 100 * $("#chat-frame").scrollTop() / ($("#chat-container").height() - $("#chat-frame").height());
+        },
+        hasScrollBar(element) {
+            return element.get(0).scrollHeight > element.height();
+        },
+        messageRightClickHanlder(event, element) {
+            var message = $(element);
+			this.selectedMessageId = message.data("messageId");
+			this.selectedMessageUser = message.data("username");
+			this.xPos = event.pageX;
+			this.yPos = event.pageY;
+			this.showMenu = true;
+            event.preventDefault();
+        }
+    },
+
+	computed: {
+		reportDialogTitle() {
+			return "Report " + this.selectedMessageUser;
+		},
+
+		reportDialogText() {
+			var filtered = this.messages.filter(m => m.id == this.selectedMessageId);
+			if(filtered.length == 0) {
+				return "";
+			}
+			var text = filtered[0].message;
+			return `You are about to report <b>${this.selectedMessageUser}</b> for the following
+					message:<br><i>${text}</i><br>Are you sure?`;
 		}
 	},
 
-	methods: {
-		sendMessage() {
-			WS.publish({
-				destination: "/game/chat",
-				body: JSON.stringify({
-					groupId: 1,
-					message: this.messageText
-				})
-			})
+    mounted() {
+		var self = this;
+		this.menuOptions = [
+			{ text: "Report Message", onClick() { 
+				self.showReportDialog = true;
+				self.showMenu = false;
+			}}
+		];
 
-			this.messageText = "";
-		},
-
-		getScrollPercentage() {
-			return 100 * $("#chat-frame").scrollTop() / ($("#chat-container").height() - $("#chat-frame").height());
-		},
-
-		hasScrollBar(element) {
-			return element.get(0).scrollHeight > element.height();
-		}
-	},
-
-	mounted() {
-		$("#message-input").submit(function(e) {
-			e.preventDefault();
-		})
-
-		this.chatSub = WS.watch("/user/local/chat")
-			.pipe(map(message => {
-				return JSON.parse(message.body);
-			}))
-			.subscribe(message => {
-				// Format the chat timestamp
-				var date = new Date(message.timestamp);
-				message.timestamp = this.timeFormatter.format(date);
-				var scrollToBottom = this.getScrollPercentage() == 100 || !this.hasScrollBar($("#chat-frame"));
-				this.messages.push(message);
-				if(scrollToBottom) {
-					this.$nextTick(() => {
-						$("#chat-frame").scrollTop($("#chat-frame")[0].scrollHeight);
-					});
-				}
-			});
-	},
-
-	unmounted() {
-		this.chatSub.unsubscribe();
-	}
+		this.reportButtons = [
+			{ text: "Yes", type: "btn-primary", onClick() {
+				WS.publish({
+					destination: "/game/chat.report",
+					body: JSON.stringify({
+						messageId: self.selectedMessageId
+					})
+				});
+				self.showReportDialog = false;
+			}},
+			{ text: "Cancel", type: "btn-secondary", onClick() {
+				showReportDialog = false;
+			}}
+		];
+		
+        $("#message-input").submit(function (e) {
+            e.preventDefault();
+        });
+        this.chatSub = WS.watch("/user/local/chat")
+            .pipe(map(message => {
+            return JSON.parse(message.body);
+        }))
+            .subscribe(message => {
+            // Format the chat timestamp
+            var date = new Date(message.timestamp);
+            message.timestamp = this.timeFormatter.format(date);
+            var scrollToBottom = this.getScrollPercentage() == 100 || !this.hasScrollBar($("#chat-frame"));
+            this.messages.push(message);
+            if (scrollToBottom) {
+                this.$nextTick(() => {
+                    $("#chat-frame").scrollTop($("#chat-frame")[0].scrollHeight);
+                    var self = this;
+                    // Refresh the context menu listeners for the chats
+                    $(".chat-message")
+                        .off("contextmenu")
+                        .on("contextmenu", function (event) {
+                        self.messageRightClickHanlder(event, this);
+                    });
+                });
+            }
+        });
+    },
+    unmounted() {
+        this.chatSub.unsubscribe();
+    },
+    components: { ContextMenu, Dialog }
 }
 </script>
 
