@@ -26,6 +26,8 @@ import net.calebscode.mythlands.service.MythlandsUserService;
 @Component
 public class CharacterSessionManager {
 	
+	public static final int SERVER_TICK_RATE = 20;
+	public static final int SERVER_TICK_DURATION = 1000 / SERVER_TICK_RATE;
 	public static final int HERO_UPDATE_INTERVAL = 5000;
 
 	@Autowired private MythlandsUserService userService;
@@ -33,10 +35,9 @@ public class CharacterSessionManager {
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
 	
-	@Autowired
-	@Qualifier("mythlandsTaskExecutor")
-	private ThreadPoolTaskExecutor executor;
-	private HashMap<String, Future<?>> futures = new HashMap<>();
+	private Object activeHeroLock = new Object();
+	private Thread heroUpdateThread;
+	private HashMap<String, Integer> users = new HashMap<>();
 	
 	@EventListener
 	public void onApplicationEvent(SessionConnectedEvent event) {		
@@ -50,17 +51,25 @@ public class CharacterSessionManager {
 				return;
 			}
 			final String username = info.username;
-			if(!futures.containsKey(username)) {
-				
-				System.out.printf("%s connected. Starting update thread.\n", username);
-				Future<?> updateFuture = executor.submit(new HeroUpdateRunnable(username));
-				futures.put(username, updateFuture);
-				
+			synchronized(activeHeroLock) {
+				if(!users.containsKey(username)) {
+					
+					System.out.printf("%s connected.\n", username);
+					users.put(username, 0);
+					
+					// If the users map size is now one, we need to start the update thread.
+					if(users.size() == 1) {
+						System.out.println("First player connected. Starting update thread.");
+						heroUpdateThread = new Thread(new HeroUpdateRunnable(), "HeroUpdateThread");
+						heroUpdateThread.start();
+					}
+					
+				}		
 			}
 		}
 	}
 	
-	//@EventListener
+	@EventListener
 	public void onApplicationEvent(SessionDisconnectEvent event) {
 		if(event.getUser() != null) {
 			MythlandsUserDTO info;
@@ -72,52 +81,79 @@ public class CharacterSessionManager {
 				return;
 			}
 			final String username = info.username;
-			Future<?> updateTask = futures.get(username);
-			if(updateTask != null) {
-				updateTask.cancel(true);
-				futures.remove(username);
+			synchronized(activeHeroLock) {
+				users.remove(username);
+				if(users.size() == 0) {
+					
+					heroUpdateThread.interrupt();
+					try {
+						heroUpdateThread.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					
+				}
 			}
 		}
 	}
 
 	private class HeroUpdateRunnable implements Runnable {
 
-		String username;
-		int updateTimer = 0;
-		
-		HeroUpdateRunnable(String username) {
-			this.username = username;
-		}
+		int tickTimer = 0;
 		
 		@Override
 		public void run() {			
 			long prevTime = System.currentTimeMillis();
-			long currentTime, delta;
+			long start, finish, delta;
 			
 			while(true) {
-				currentTime = System.currentTimeMillis();
-				delta = currentTime - prevTime;
+				start = System.currentTimeMillis();
+				delta = start - prevTime;
 				
-				updateTimer += delta;
+				tickTimer += delta;
 				
-				while(updateTimer > HERO_UPDATE_INTERVAL) {
-					updateHero();
+				// While the server tick timer is greater than the server
+				// tick duration, we need to do an update.
+				while(tickTimer > SERVER_TICK_DURATION) {
+					
+					synchronized(activeHeroLock) {
+						// Loop through all active characters.
+						for(String username : users.keySet()) {
+							
+							// Get the character's timer and increment it by one server tick duration.
+							int userTimer = users.get(username);
+							userTimer += SERVER_TICK_DURATION;
+							
+							// If the timer exceeds the update interval, update that hero and
+							// adjust the timer accordingly.
+							if(userTimer > HERO_UPDATE_INTERVAL) {
+								updateHero(username);
+								userTimer -= HERO_UPDATE_INTERVAL;
+							}
+							
+							users.put(username, userTimer);
+							
+						}
+					}
+					
+					// We've executed a server tick, so remove one tick duration
+					// from the tick timer.
+					tickTimer -= SERVER_TICK_DURATION;
 				}
 				
-				prevTime = currentTime;
+				prevTime = start;
 				
 				try {
-					Thread.sleep(50);
+					Thread.sleep(Math.max(0, SERVER_TICK_DURATION - delta));
 				} catch (InterruptedException e) {
-					System.out.printf("%s disconnected. Stopping update thread.\n", username);
+					System.out.printf("All characters disconnected. Stopping update thread.\n");
 					return;
 				}
 			}
 		}
 		
-		void updateHero() {
+		void updateHero(String username) {
 			try {
-				updateTimer -= HERO_UPDATE_INTERVAL;
 				MythlandsCharacterDTO heroDto;
 				try {
 					heroDto = userService.getActiveCharacter(username);
@@ -138,7 +174,8 @@ public class CharacterSessionManager {
 				if(hpRegen.entrySet().size() > 0 || manaRegen.entrySet().size() > 0) {
 					messenger.convertAndSendToUser(username, "/local/character", 
 							gson.toJson(new CharacterUpdateMessage(hpRegen, manaRegen)));
-				}				
+				}
+				System.out.printf("Updated %s!\n", username);
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.out.println(e.getMessage());
