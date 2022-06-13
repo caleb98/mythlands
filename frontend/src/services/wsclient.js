@@ -1,11 +1,12 @@
 import Cookies from 'js-cookie';
 import { RxStomp } from '@stomp/rx-stomp';
+import { windowTime } from 'rxjs';
 
 // Setup the default client
 const WS = new RxStomp();
 
 var wsClientConfig = {
-	brokerURL: "ws://localhost:8080/connect",
+	brokerURL: process.env.VUE_APP_WEBSOCKET_HOST + "/connect",
 	beforeConnect() {
 		WS.configure({
 			connectHeaders: {

@@ -17,10 +17,18 @@ tasks.register('frontendDevUpdate') {
     }
 }
 
-tasks.register('build', Copy) {
-    dependsOn 'frontend:build', 'updateFrontend', 'backend:build'
+tasks.register('updateBuild', Copy) {
+    dependsOn 'backend:build'
     from './backend/build/libs'
-    into './build'
+    into './build'  
+}
+
+tasks.register('build', GradleBuild) {
+    tasks = ['frontend:build', 'updateFrontend', 'backend:build', 'updateBuild']
+}
+
+tasks.register('buildDev', GradleBuild) {
+    tasks = ['frontend:buildDevelopment', 'updateFrontend', 'backend:build', 'updateBuild']
 }
 
 tasks.register('serve', GradleBuild) {

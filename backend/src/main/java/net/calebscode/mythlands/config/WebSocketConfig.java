@@ -1,6 +1,10 @@
 package net.calebscode.mythlands.config;
 
+import java.util.Arrays;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.security.config.annotation.web.messaging.MessageSecurityMetadataSourceRegistry;
 import org.springframework.security.config.annotation.web.socket.AbstractSecurityWebSocketMessageBrokerConfigurer;
@@ -11,6 +15,9 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 @EnableWebSocketMessageBroker
 public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfigurer {
 	
+	@Autowired
+	private Environment environment;
+	
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry registry) {
 		registry.enableSimpleBroker("/global", "/topic", "/local");
@@ -18,8 +25,16 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
 	}
 	
 	@Override
-	public void registerStompEndpoints(StompEndpointRegistry registry) {
-		registry.addEndpoint("/connect");
+	public void registerStompEndpoints(StompEndpointRegistry registry) {		
+		if(Arrays.stream(environment.getActiveProfiles()).anyMatch("dev"::equals)) {
+			registry
+				.addEndpoint("/connect")
+				.setAllowedOrigins("*");
+		}
+		else {
+			registry
+				.addEndpoint("/connect");
+		}
 	}
 	
 	@Override

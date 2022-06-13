@@ -83,6 +83,7 @@ public class CharacterSessionManager {
 			final String username = info.username;
 			synchronized(activeHeroLock) {
 				users.remove(username);
+				System.out.printf("%s disconnected.\n", username);
 				if(users.size() == 0) {
 					
 					heroUpdateThread.interrupt();
@@ -175,7 +176,6 @@ public class CharacterSessionManager {
 					messenger.convertAndSendToUser(username, "/local/character", 
 							gson.toJson(new CharacterUpdateMessage(hpRegen, manaRegen)));
 				}
-				System.out.printf("Updated %s!\n", username);
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.out.println(e.getMessage());

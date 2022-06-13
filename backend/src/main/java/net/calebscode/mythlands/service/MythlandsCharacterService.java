@@ -1,12 +1,17 @@
 package net.calebscode.mythlands.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import javax.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.JsonObject;
 
+import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
@@ -161,6 +166,16 @@ public class MythlandsCharacterService {
 	
 	public boolean isDeceased(int heroId) throws CharacterNotFoundException {
 		return getCharacter(heroId).isDeceased();
+	}
+	
+	public List<MythlandsCharacterDTO> getHallOfFameCharacters(int pageSize, int pageNum) {
+		List<MythlandsCharacter> characters = characterRepository.findByOrderByLevelDescXpDesc(
+			Pageable.ofSize(pageSize).withPage(pageNum)
+		);
+		return characters.stream()
+			.map((character) -> { return new MythlandsCharacterDTO(character); })
+			.collect(Collectors.toList());
+		
 	}
 	
 	private MythlandsCharacter getCharacter(int id) throws CharacterNotFoundException {

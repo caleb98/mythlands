@@ -134,7 +134,7 @@ export default {
 				self.showReportDialog = false;
 			}},
 			{ text: "Cancel", type: "btn-secondary", onClick() {
-				showReportDialog = false;
+				self.showReportDialog = false;
 			}}
 		];
 		
