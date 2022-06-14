@@ -22,6 +22,7 @@ public class HallOfFameMessage {
 		final int rank;
 		final String firstName;
 		final String lastName;
+		final String username;
 		final int level;
 		final int xp;
 		final boolean isDeceased;
@@ -31,6 +32,7 @@ public class HallOfFameMessage {
 			
 			this.firstName = character.firstName;
 			this.lastName = character.lastName;
+			this.username = character.ownerName;
 			this.level = character.level;
 			this.xp = character.xp;
 			this.isDeceased = character.isDeceased;
@@ -46,6 +48,10 @@ public class HallOfFameMessage {
 
 		public String getLastName() {
 			return lastName;
+		}
+		
+		public String getUsername() {
+			return username;
 		}
 
 		public int getLevel() {

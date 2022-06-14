@@ -23,8 +23,12 @@
 				</transition>
 			</div>
 
-			<div class="col-12 col-lg-6" v-if="isLoggedIn">
-				<ChatComponent />
+			<div class="col-12 col-lg-6 mb-2" v-if="isLoggedIn">
+				<ChatComponent/>
+			</div>
+
+			<div class="col-12 col-lg-6 mb-2">
+				<Leaderboard page-size="10"/>
 			</div>
 		</div>
 
@@ -58,6 +62,7 @@ import LoginComponent from './components/LoginComponent.vue';
 import RegisterComponent from './components/RegisterComponent.vue';
 import PlayerDashboard from './components/PlayerDashboard.vue';
 import ChatComponent from './components/ChatComponent.vue';
+import Leaderboard from './components/Leaderboard.vue';
 
 // Setup csrf token
 $(function () {
@@ -73,7 +78,8 @@ export default {
     LoginComponent,
     RegisterComponent,
     PlayerDashboard,
-    ChatComponent
+    ChatComponent,
+	Leaderboard
 },
 	data() {
 		return {
