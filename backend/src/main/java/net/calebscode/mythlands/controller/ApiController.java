@@ -28,6 +28,12 @@ public class ApiController {
 			@RequestParam(defaultValue = "10") int pageSize, 
 			@RequestParam(defaultValue = "0") int pageNum) 
 	{
+		if(pageSize < 1) {
+			pageSize = 1;
+		}
+		else if(pageNum < 0) {
+			return new ServerResponse("Error, invalid page number.", true);
+		}
 		List<MythlandsCharacterDTO> characters = characterService.getHallOfFameCharacters(pageSize, pageNum);
 		return new ServerResponse("Success!", new HallOfFameMessage(characters, pageSize, pageNum));
 	}
