@@ -112,6 +112,9 @@ public class MythlandsCharacter {
 
 	public void modifyCurrentHealth(double amount) {
 		currentHealth += amount;
+		// Trim the health to two decimal places to prevent accumulation
+		// of floating point errors.
+		currentHealth = (int) (currentHealth * 100) / 100.0;
 		if(currentHealth < 0) {
 			currentHealth = 0;
 		}

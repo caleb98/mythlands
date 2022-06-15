@@ -17,35 +17,45 @@
 
 		<!-- Main Content -->
 		<div class="row justify-content-center">
+
+			<!-- Login/Profile -->
 			<div class="col-12 col-lg-6 mb-2">
 				<transition name="component-fade" mode="out-in">
 					<component v-if="activeView" :is="activeView" v-on="viewData.listeners" v-bind="viewData.properties"></component>
 				</transition>
 			</div>
 
+			<!-- Chat -->
 			<div class="col-12 col-lg-6 mb-2" v-if="isLoggedIn">
-				<ChatComponent v-if="isLoggedIn" class="mb-2"/>
+				<ChatComponent class="mb-2"/>
+			</div>
+
+			<!-- Leaderboard -->
+			<div class="col-12 col-lg-6 mb-2">
 				<Leaderboard page-size="10"/>
+			</div>
+
+			<!-- System Messages -->
+			<div class="col-12 col-lg-6">
+				<div class="framed pt-1 px-0">
+					<table class="table table-striped mb-0">
+						<thead>
+							<tr>
+								<th scope="col">Messages</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="message in gameMessages" :key="message.bossName">
+								<td>{{message.bossName}} was slain by {{message.killedBy}}!</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 
 		<!-- Messages -->
-		<div class="row justify-content-center">
-			<div class="col-12 col-lg-6">
-				<table class="table table-striped">
-					<thead>
-						<tr>
-							<th scope="col">Messages</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="message in gameMessages" :key="message.bossName">
-							<td>{{message.bossName}} was slain by {{message.killedBy}}!</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
+
 
 	</div>
 </template>
