@@ -1,8 +1,13 @@
 <template>
-    <div class="framed p=3">
+    <div class="framed p-3 position-relative">
+        <button type="button" class="btn btn-primary p-1" id="leaderboard-refresh" @click="displayLeaderboard(0)">
+            <span class="material-icons-round align-middle">
+                refresh
+            </span>
+        </button>
         <div class="row">
             <div class="col-12">
-                <h6 class="m-1">Hall of Fame</h6>
+                <h5>Hall of Fame</h5>
                 <table class="table">
                     <thead>
                         <tr>
@@ -90,5 +95,9 @@ export default {
 </script>
 
 <style scoped>
-
+#leaderboard-refresh {
+    position: absolute;
+    right: 3px;
+    top: 3px;
+}
 </style>
