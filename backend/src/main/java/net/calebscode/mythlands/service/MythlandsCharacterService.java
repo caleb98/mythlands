@@ -36,7 +36,7 @@ public class MythlandsCharacterService {
 		
 		JsonObject updates = new JsonObject();
 		updates.addProperty("currentHealth", newHealth);
-		if(newHealth <= 0) { // This is hacky, but it fixes floating point errors not killing characters that should have 0 hp
+		if(newHealth <= 0) {
 			updates.addProperty("isDeceased", true);
 			hero.setDeceased(true);
 		}
