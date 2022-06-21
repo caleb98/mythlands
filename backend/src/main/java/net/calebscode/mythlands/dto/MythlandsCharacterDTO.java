@@ -18,6 +18,8 @@ public class MythlandsCharacterDTO {
 	public final int maxMana;
 	public final double currentMana;
 	
+	public final int stamina;
+	public final int spirit;
 	public final int strength;
 	public final int dexterity;
 	public final int attunement;
@@ -43,6 +45,8 @@ public class MythlandsCharacterDTO {
 		maxMana = hc.getMaxMana();
 		currentMana = hc.getCurrentMana();
 		
+		stamina = hc.getStamina();
+		spirit = hc.getSpirit();
 		strength = hc.getStrength();
 		dexterity = hc.getDexterity();
 		attunement = hc.getAttunement();

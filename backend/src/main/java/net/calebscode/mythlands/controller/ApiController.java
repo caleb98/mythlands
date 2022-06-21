@@ -12,7 +12,7 @@ import com.google.gson.Gson;
 
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.messages.out.HallOfFameMessage;
-import net.calebscode.mythlands.response.ServerResponse;
+import net.calebscode.mythlands.messages.out.ServerMessage;
 import net.calebscode.mythlands.service.MythlandsCharacterService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
@@ -24,7 +24,7 @@ public class ApiController {
 	@Autowired Gson gson;
 	
 	@GetMapping("/api/halloffame")
-	public @ResponseBody ServerResponse getHallOfFame(
+	public @ResponseBody ServerMessage getHallOfFame(
 			@RequestParam(defaultValue = "10") int pageSize, 
 			@RequestParam(defaultValue = "0") int pageNum) 
 	{
@@ -32,10 +32,10 @@ public class ApiController {
 			pageSize = 1;
 		}
 		else if(pageNum < 0) {
-			return new ServerResponse("Error, invalid page number.", true);
+			return new ServerMessage("Error, invalid page number.", true);
 		}
 		List<MythlandsCharacterDTO> characters = characterService.getHallOfFameCharacters(pageSize, pageNum);
-		return new ServerResponse("Success!", new HallOfFameMessage(characters, pageSize, pageNum));
+		return new ServerMessage("Success!", new HallOfFameMessage(characters, pageSize, pageNum));
 	}
 	
 }

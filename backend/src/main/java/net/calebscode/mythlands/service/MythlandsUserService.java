@@ -170,11 +170,27 @@ public class MythlandsUserService {
 			updates.addProperty("toughness", hero.getToughness());
 			break;
 			
+		case SPIRIT:
+			hero.modifySpirit(1);
+			hero.recalculateMaxMana();
+			updates.addProperty("spirit", hero.getSpirit());
+			updates.addProperty("currentMana", hero.getCurrentMana());
+			updates.addProperty("maxMana", hero.getMaxMana());
+			break;
+			
+		case STAMINA:
+			hero.modifyStamina(1);
+			hero.recalculateMaxHealth();
+			updates.addProperty("stamina", hero.getStamina());
+			updates.addProperty("currentHealth", hero.getCurrentHealth());
+			updates.addProperty("maxHealth", hero.getMaxHealth());
+			break;
+			
 		default:
-			//TODO: handle
+			// TODO: error
 			break;
 		
-		}
+		}		
 		
 		return updates;
 	}

@@ -28,6 +28,8 @@ public class MythlandsCharacter {
 	@Column(nullable = false) private int maxMana = 10;
 	@Column(nullable = false) private double currentMana = 10;
 	
+	@Column(nullable = false) private int stamina = 1;
+	@Column(nullable = false) private int spirit = 1;
 	@Column(nullable = false) private int strength = 1;
 	@Column(nullable = false) private int dexterity = 1;
 	@Column(nullable = false) private int attunement = 1;
@@ -148,7 +150,31 @@ public class MythlandsCharacter {
 			currentMana = maxMana;
 		}
 	}
+	
+	public int getStamina() {
+		return stamina;
+	}
+	
+	public void setStamina(int stamina) {
+		this.stamina = stamina;
+	}
+	
+	public void modifyStamina(int amount) {
+		this.stamina += amount;
+	}
+	
+	public int getSpirit() {
+		return spirit;
+	}
+	
+	public void setSpirit(int spirit) {
+		this.spirit = spirit;
+	}
 
+	public void modifySpirit(int amount) {
+		this.spirit += amount;
+	}
+	
 	public int getStrength() {
 		return strength;
 	}
@@ -239,6 +265,18 @@ public class MythlandsCharacter {
 	
 	public String getFullName() {
 		return firstName + " " + lastName;
+	}
+	
+	public void recalculateMaxHealth() {
+		double currentPercent = currentHealth / maxHealth;
+		maxHealth = (int) (9 + (stamina * level));
+		currentHealth = currentPercent * maxHealth;
+	}
+	
+	public void recalculateMaxMana() {
+		double currentPercent = currentMana / maxMana;
+		maxMana = (int) (9 + (spirit * level));
+		currentMana = currentPercent * maxMana;
 	}
 	
 }

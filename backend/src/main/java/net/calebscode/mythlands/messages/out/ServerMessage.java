@@ -1,24 +1,24 @@
-package net.calebscode.mythlands.response;
+package net.calebscode.mythlands.messages.out;
 
-public class ServerResponse {
+public class ServerMessage {
 
 	private String message;
 	private Object data;
 	private boolean isError;
 	
-	public ServerResponse(String message) {
+	public ServerMessage(String message) {
 		this(message, null, false);
 	}
 	
-	public ServerResponse(String message, boolean isError) {
+	public ServerMessage(String message, boolean isError) {
 		this(message, null, isError);
 	}
 	
-	public ServerResponse(String message, Object data) {
+	public ServerMessage(String message, Object data) {
 		this(message, data, false);
 	}
 	
-	public ServerResponse(String message, Object data, boolean isError) {
+	public ServerMessage(String message, Object data, boolean isError) {
 		this.message = message;
 		this.data = data;
 		this.isError = isError;

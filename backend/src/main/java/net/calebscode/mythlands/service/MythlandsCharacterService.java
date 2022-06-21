@@ -159,6 +159,15 @@ public class MythlandsCharacterService {
 		if(oldLevel != newLevel) {
 			updates.addProperty("level", newLevel);
 			updates.addProperty("skillPoints", newSkillPoints);
+			
+			// If they leveled up, we also need to recalculate health and mana.
+			hero.recalculateMaxHealth();
+			hero.recalculateMaxMana();
+			
+			updates.addProperty("currentHealth", hero.getCurrentHealth());
+			updates.addProperty("maxHealth", hero.getMaxHealth());
+			updates.addProperty("currentMana", hero.getCurrentMana());
+			updates.addProperty("maxMana", hero.getMaxMana());
 		}
 		
 		return updates;

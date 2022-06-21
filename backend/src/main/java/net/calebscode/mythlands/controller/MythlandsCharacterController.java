@@ -23,7 +23,7 @@ import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
 import net.calebscode.mythlands.messages.out.CharacterListMessage;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
-import net.calebscode.mythlands.response.ServerResponse;
+import net.calebscode.mythlands.messages.out.ServerMessage;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
@@ -34,7 +34,7 @@ public class MythlandsCharacterController {
 	@Autowired private Gson gson;
 	
 	@PostMapping("/character/create")
-	public @ResponseBody ServerResponse createCharacter(
+	public @ResponseBody ServerMessage createCharacter(
 			@RequestParam String firstName,
 			@RequestParam String lastName,
 			Principal principal)  
@@ -43,19 +43,19 @@ public class MythlandsCharacterController {
 		try {
 			userService.createNewCharacter(principal.getName(), firstName, lastName);
 		} catch (CharacterCreationException | UserNotFoundException e) {
-			return new ServerResponse(e.getMessage(), true);
+			return new ServerMessage(e.getMessage(), true);
 		}
 		
-		return new ServerResponse("Character created!");
+		return new ServerMessage("Character created!");
 	}
 	
 	@GetMapping("/character/list")
-	public @ResponseBody ServerResponse listCharacters(Principal principal) {
+	public @ResponseBody ServerMessage listCharacters(Principal principal) {
 		try {
 			CharacterListMessage list = userService.getCharacterList(principal.getName());
-			return new ServerResponse("Success!", list);
+			return new ServerMessage("Success!", list);
 		} catch (UserNotFoundException e) {
-			return new ServerResponse(e.getMessage(), true);
+			return new ServerMessage(e.getMessage(), true);
 		}
 	}
 	

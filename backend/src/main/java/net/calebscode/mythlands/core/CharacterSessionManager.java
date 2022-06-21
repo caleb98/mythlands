@@ -166,7 +166,7 @@ public class CharacterSessionManager {
 					return;
 				}
 				
-				double regenAmount = 1 + (heroDto.level - 1) * 0.2;
+				double regenAmount = heroDto.maxHealth * 0.05;
 				JsonObject hpRegen = characterService.gainHealth(heroDto.id, regenAmount);
 				JsonObject manaRegen = characterService.gainMana(heroDto.id, regenAmount);
 				heroDto = userService.getActiveCharacter(username);

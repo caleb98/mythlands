@@ -3,6 +3,9 @@ package net.calebscode.mythlands.controller;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map.Entry;
+
+import javax.annotation.PostConstruct;
+
 import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,7 @@ import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.core.Boss;
 import net.calebscode.mythlands.core.ContributionInfo;
+import net.calebscode.mythlands.core.NameGenerator;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
@@ -37,15 +41,21 @@ public class BossController {
 	@Autowired private MythlandsUserService userService;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
+	@Autowired private NameGenerator bossNameGenerator;
 	
 	private Random random = new Random();
-	private int bossCounter = 1;
-	private Boss boss = new Boss("Boss 1", 15);
+	private Boss boss;
+	private int bossCount = 1;
 	
 	private HashMap<Integer, ContributionInfo> contribs = new HashMap<>(); 
 	
 	private static Object bossLock = new Object();
 
+	@PostConstruct
+	public void init() {
+		boss = new Boss("Boss " + bossCount++ + " - " + bossNameGenerator.generateName(), 15); 
+	}
+	
 	@MessageMapping("/attack")
 	public void attack(AttackMessage attack, Principal principal) {		
 		// Get the attacking user's hero
@@ -102,7 +112,7 @@ public class BossController {
 				info.setDealtKillingBlow(true);
 				messenger.convertAndSend("/global/boss.died", 
 						new BossDiedMessage(boss.getName(), heroDto.firstName + " " + heroDto.lastName));
-				boss = new Boss("Boss " + ++bossCounter, 12 + random.nextInt(6));
+				boss = new Boss("Boss " + bossCount++ + " - " + bossNameGenerator.generateName(), 12 + random.nextInt(6));
 				
 				// Process contributions and update relevant characters
 				processContributorAwards();
@@ -121,8 +131,8 @@ public class BossController {
 					gson.toJson(new CharacterUpdateMessage(receivedDamageUpdate, xpUpdate)));
 			
 			// Attack cooldown
-			characterService.setAttackCooldown(heroDto.id, currentTime + 2000);
-			messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(2.0));
+			characterService.setAttackCooldown(heroDto.id, currentTime + 5);
+			messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(0.005));
 		} catch (CharacterNotFoundException e) {
 			// TODO: handle/log
 		}

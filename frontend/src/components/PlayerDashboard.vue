@@ -39,6 +39,19 @@
 					<table class="table align-middle stats-table mb-0 clean-text">
 						<tbody>
 							<tr>
+								<td class="text-start"><b>Stamina</b></td>
+								<td class="text-end">{{activeCharacter.stamina}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('STAMINA')">add</span>
+								</td>
+
+								<td class="text-start ps-4"><b>Spirit</b></td>
+								<td class="text-end">{{activeCharacter.spirit}}</td>
+								<td v-if="hasSkillPoints" class="m-0 p-0">
+									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('SPIRIT')">add</span>
+								</td>
+							</tr>
+							<tr>
 								<td class="text-start"><b>Strength</b></td>
 								<td class="text-end">{{activeCharacter.strength}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
