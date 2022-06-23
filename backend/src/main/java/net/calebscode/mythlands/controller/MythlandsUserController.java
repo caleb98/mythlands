@@ -18,7 +18,7 @@ import net.calebscode.mythlands.messages.out.ServerMessage;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
-public class UserController {
+public class MythlandsUserController {
 	
 	@Autowired private MythlandsUserService userService;
 	

@@ -21,8 +21,10 @@ import com.google.gson.JsonObject;
 import net.calebscode.mythlands.core.Boss;
 import net.calebscode.mythlands.core.ContributionInfo;
 import net.calebscode.mythlands.core.NameGenerator;
+import net.calebscode.mythlands.core.item.ItemRarity;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
+import net.calebscode.mythlands.exception.ItemNotFoundException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.messages.in.AttackMessage;
@@ -32,12 +34,14 @@ import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.CooldownMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
 import net.calebscode.mythlands.service.MythlandsCharacterService;
+import net.calebscode.mythlands.service.MythlandsItemService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
 public class BossController {
 	
 	@Autowired private MythlandsCharacterService characterService;
+	@Autowired private MythlandsItemService itemService;
 	@Autowired private MythlandsUserService userService;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
@@ -124,9 +128,14 @@ public class BossController {
 
 		// Do attack post-processing
 		try {
+			var item = itemService.createNewItem("Loot", ItemRarity.COMMON);
+			characterService.addInventoryItem(heroDto.id, item.id);
+			
 			// TODO: implement damage calculation
 			JsonObject receivedDamageUpdate = characterService.dealDamage(heroDto.id, 1);
 			JsonObject xpUpdate = characterService.grantXp(heroDto.id, 1);
+			// TODO: xp gain modifier
+			// TODO: gold?
 			messenger.convertAndSendToUser(principal.getName(), "/local/character", 
 					gson.toJson(new CharacterUpdateMessage(receivedDamageUpdate, xpUpdate)));
 			
@@ -135,6 +144,9 @@ public class BossController {
 			messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(heroDto.attackCooldown / 1000));
 		} catch (CharacterNotFoundException e) {
 			// TODO: handle/log
+		} catch (ItemNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	

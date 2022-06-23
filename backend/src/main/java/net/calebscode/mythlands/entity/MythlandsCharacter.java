@@ -1,5 +1,7 @@
 package net.calebscode.mythlands.entity;
 
+import java.util.List;
+
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
 import javax.persistence.Column;
@@ -10,9 +12,11 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import net.calebscode.mythlands.core.StatValue;
+import net.calebscode.mythlands.core.item.MythlandsItem;
 
 @Entity
 @Table(name = "characters")
@@ -36,8 +40,13 @@ public class MythlandsCharacter {
 	@Column(nullable = false) private int skillPoints = 0;
 	
 	@ManyToOne
-	@JoinColumn(name = "users_id")
+	@JoinColumn(name = "owner_id")
 	private MythlandsUser owner;
+	
+	@OneToMany(mappedBy = "characterOwner")
+	private List<MythlandsItem> inventory;
+	
+	@Column(nullable = false) private int inventoryCapacity = 100;
 	
 	/********************************************************/
 	/*                     Core Stats                       */
@@ -232,6 +241,18 @@ public class MythlandsCharacter {
 	
 	public void setOwner(MythlandsUser owner) {
 		this.owner = owner;
+	}
+	
+	public int getInventoryCapacity() {
+		return inventoryCapacity;
+	}
+	
+	public void setInventorySize(int size) {
+		inventoryCapacity = size;
+	}
+	
+	public List<MythlandsItem> getInventory() {
+		return inventory;
 	}
 	
 	public long getAttackReady() {

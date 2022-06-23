@@ -1,6 +1,8 @@
 package net.calebscode.mythlands.service;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
@@ -11,16 +13,21 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.JsonObject;
 
+import net.calebscode.mythlands.core.item.MythlandsItem;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
+import net.calebscode.mythlands.dto.MythlandsItemDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
 import net.calebscode.mythlands.exception.InvalidCharacterException;
+import net.calebscode.mythlands.exception.ItemNotFoundException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
 import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
+import net.calebscode.mythlands.repository.MythlandsItemRepository;
 
 @Service
 public class MythlandsCharacterService {
 
+	@Autowired private MythlandsItemRepository itemRepository;
 	@Autowired private MythlandsCharacterRepository characterRepository;
 	
 	@Transactional
@@ -205,9 +212,38 @@ public class MythlandsCharacterService {
 			Pageable.ofSize(pageSize).withPage(pageNum)
 		);
 		return characters.stream()
-			.map((character) -> { return new MythlandsCharacterDTO(character); })
+			.map(MythlandsCharacterDTO::new)
 			.collect(Collectors.toList());
 		
+	}
+	
+	public List<MythlandsItemDTO> getInventory(int heroId) throws CharacterNotFoundException {
+		MythlandsCharacter hero = getCharacter(heroId);
+		return hero.getInventory().stream()
+				.map(MythlandsItemDTO::new)
+				.collect(Collectors.toList());
+	}
+	
+	@Transactional
+	public boolean addInventoryItem(int heroId, UUID itemId) throws CharacterNotFoundException, ItemNotFoundException {
+		MythlandsCharacter hero = getCharacter(heroId);
+		
+		// Check that inventory has room
+		if(hero.getInventory().size() >= hero.getInventoryCapacity()) {
+			return false;
+		}
+		
+		// Get the item
+		Optional<MythlandsItem> itemResult = itemRepository.findById(itemId);
+		if(itemResult.isEmpty()) {
+			throw new ItemNotFoundException("Item with id " + itemId + " not found.");
+		}
+		MythlandsItem item = itemResult.get();
+		
+		// Add item
+		hero.getInventory().add(item);
+		item.setCharacterOwner(hero);
+		return true;
 	}
 	
 	private MythlandsCharacter getCharacter(int id) throws CharacterNotFoundException {

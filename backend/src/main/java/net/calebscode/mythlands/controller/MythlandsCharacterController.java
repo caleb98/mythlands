@@ -1,6 +1,7 @@
 package net.calebscode.mythlands.controller;
 
 import java.security.Principal;
+import java.util.List;
 
 import javax.transaction.Transactional;
 
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
+import net.calebscode.mythlands.dto.MythlandsItemDTO;
 import net.calebscode.mythlands.exception.CharacterCreationException;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
 import net.calebscode.mythlands.exception.InvalidCharacterException;
@@ -59,6 +61,18 @@ public class MythlandsCharacterController {
 			CharacterListMessage list = userService.getCharacterList(principal.getName());
 			return new ServerMessage("Success!", list);
 		} catch (UserNotFoundException e) {
+			return new ServerMessage(e.getMessage(), true);
+		}
+	}
+	
+	@GetMapping("/character/inventory")
+	public @ResponseBody ServerMessage getInventory(Principal principal) {
+		try {
+			List<MythlandsItemDTO> inventory = characterService.getInventory(
+					userService.getActiveCharacter(principal.getName()).id
+			);
+			return new ServerMessage("Success", inventory);
+		} catch (CharacterNotFoundException | UserNotFoundException | NoActiveCharacterException e) {
 			return new ServerMessage(e.getMessage(), true);
 		}
 	}
