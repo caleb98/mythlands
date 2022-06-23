@@ -6,6 +6,7 @@ import java.util.concurrent.Future;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
+import net.calebscode.mythlands.exception.CharacterNotFoundException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
@@ -35,7 +37,7 @@ public class CharacterSessionManager {
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
 	
-	private Object activeHeroLock = new Object();
+	private Object activeUsersLock = new Object();
 	private Thread heroUpdateThread;
 	private HashMap<String, Integer> users = new HashMap<>();
 	
@@ -51,7 +53,7 @@ public class CharacterSessionManager {
 				return;
 			}
 			final String username = info.username;
-			synchronized(activeHeroLock) {
+			synchronized(activeUsersLock) {
 				if(!users.containsKey(username)) {
 					
 					System.out.printf("%s connected.\n", username);
@@ -81,7 +83,7 @@ public class CharacterSessionManager {
 				return;
 			}
 			final String username = info.username;
-			synchronized(activeHeroLock) {
+			synchronized(activeUsersLock) {
 				users.remove(username);
 				System.out.printf("%s disconnected.\n", username);
 				if(users.size() == 0) {
@@ -105,22 +107,26 @@ public class CharacterSessionManager {
 		@Override
 		public void run() {			
 			long prevTime = System.currentTimeMillis();
-			long start, finish, delta;
+			long start, delta;
 			
+			// Main loop
 			while(true) {
+				
+				// Get current iteration time and calculate delta
 				start = System.currentTimeMillis();
 				delta = start - prevTime;
 				
+				// Increase the timer for ticks
 				tickTimer += delta;
 				
 				// While the server tick timer is greater than the server
 				// tick duration, we need to do an update.
 				while(tickTimer > SERVER_TICK_DURATION) {
 					
-					synchronized(activeHeroLock) {
-						// Loop through all active characters.
-						for(String username : users.keySet()) {
-							
+					synchronized(activeUsersLock) {
+						
+						// Loop through all active characters
+						users.keySet().parallelStream().forEach((username) -> {
 							// Get the character's timer and increment it by one server tick duration.
 							int userTimer = users.get(username);
 							userTimer += SERVER_TICK_DURATION;
@@ -132,9 +138,10 @@ public class CharacterSessionManager {
 								userTimer -= HERO_UPDATE_INTERVAL;
 							}
 							
+							// Update the user's update timer
 							users.put(username, userTimer);
-							
-						}
+						});
+						
 					}
 					
 					// We've executed a server tick, so remove one tick duration
@@ -142,8 +149,10 @@ public class CharacterSessionManager {
 					tickTimer -= SERVER_TICK_DURATION;
 				}
 				
+				// Set the previous time for delta calculation in next loop
 				prevTime = start;
 				
+				// Sleep until next tick is necessary
 				try {
 					Thread.sleep(Math.max(0, SERVER_TICK_DURATION - delta));
 				} catch (InterruptedException e) {
@@ -155,6 +164,8 @@ public class CharacterSessionManager {
 		
 		void updateHero(String username) {
 			try {
+				
+				// Retrieve the hero for the user
 				MythlandsCharacterDTO heroDto;
 				try {
 					heroDto = userService.getActiveCharacter(username);
@@ -162,13 +173,16 @@ public class CharacterSessionManager {
 					return;
 				}
 					
+				// Make sure the hero is alive before doing an update
 				if(heroDto.isDeceased) {
 					return;
 				}
 				
-				double regenAmount = heroDto.maxHealth * 0.05;
-				JsonObject hpRegen = characterService.gainHealth(heroDto.id, regenAmount);
-				JsonObject manaRegen = characterService.gainMana(heroDto.id, regenAmount);
+				// Regen health and mana
+				double hpAmount = heroDto.maxHealth * 0.1;
+				double manaAmount = heroDto.maxMana * 0.1;
+				JsonObject hpRegen = characterService.gainHealth(heroDto.id, hpAmount);
+				JsonObject manaRegen = characterService.gainMana(heroDto.id, manaAmount);
 				heroDto = userService.getActiveCharacter(username);
 				
 				// If the hp/mana regen changed anything, send the updates
@@ -176,9 +190,9 @@ public class CharacterSessionManager {
 					messenger.convertAndSendToUser(username, "/local/character", 
 							gson.toJson(new CharacterUpdateMessage(hpRegen, manaRegen)));
 				}
-			} catch (Exception e) {
+			} catch (CharacterNotFoundException | UserNotFoundException | NoActiveCharacterException e) {
 				e.printStackTrace();
-				System.out.println(e.getMessage());
+				System.err.println(e.getMessage());
 			}
 		}
 		

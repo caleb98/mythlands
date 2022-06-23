@@ -13,22 +13,26 @@ public class MythlandsCharacterDTO {
 	public final int xp;
 	public final boolean isDeceased;
 	
-	public final int maxHealth;
-	public final double currentHealth;
-	public final int maxMana;
-	public final double currentMana;
-	
-	public final int stamina;
-	public final int spirit;
-	public final int strength;
-	public final int dexterity;
-	public final int attunement;
-	public final int toughness;
-	public final int avoidance;
-	public final int resistance;
-	
 	public final int skillPoints;
 	public final long attackReady;
+	
+	public final double maxHealth;
+	public final double currentHealth;
+	public final double maxMana;
+	public final double currentMana;
+	
+	public final double stamina;
+	public final double spirit;
+	public final double strength;
+	public final double dexterity;
+	public final double attunement;
+	public final double toughness;
+	public final double avoidance;
+	public final double resistance;
+	
+	public final double goldGain;
+	public final double xpGain;
+	public final double attackCooldown;
 	
 	public MythlandsCharacterDTO(MythlandsCharacter hc) {
 		id = hc.getId();
@@ -40,22 +44,26 @@ public class MythlandsCharacterDTO {
 		xp = hc.getXp();
 		isDeceased = hc.isDeceased();
 		
+		skillPoints = hc.getSkillPoints();
+		attackReady = hc.getAttackReady();
+		
 		maxHealth = hc.getMaxHealth();
 		currentHealth = hc.getCurrentHealth();
 		maxMana = hc.getMaxMana();
 		currentMana = hc.getCurrentMana();
 		
-		stamina = hc.getStamina();
-		spirit = hc.getSpirit();
-		strength = hc.getStrength();
-		dexterity = hc.getDexterity();
-		attunement = hc.getAttunement();
-		toughness = hc.getToughness();
-		avoidance = hc.getAvoidance();
-		resistance = hc.getResistance();
+		stamina = hc.getStamina().getValue();
+		spirit = hc.getSpirit().getValue();
+		strength = hc.getStrength().getValue();
+		dexterity = hc.getDexterity().getValue();
+		attunement = hc.getAttunement().getValue();
+		toughness = hc.getToughness().getValue();
+		avoidance = hc.getAvoidance().getValue();
+		resistance = hc.getResistance().getValue();
 		
-		skillPoints = hc.getSkillPoints();
-		attackReady = hc.getAttackReady();
+		goldGain = hc.getGoldGain().getValue();
+		xpGain = hc.getXpGain().getValue();
+		attackCooldown = hc.getAttackCooldown().getValue();
 	}
 	
 }

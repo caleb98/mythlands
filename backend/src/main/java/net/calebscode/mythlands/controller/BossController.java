@@ -131,8 +131,8 @@ public class BossController {
 					gson.toJson(new CharacterUpdateMessage(receivedDamageUpdate, xpUpdate)));
 			
 			// Attack cooldown
-			characterService.setAttackCooldown(heroDto.id, currentTime + 5);
-			messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(0.005));
+			characterService.setAttackCooldown(heroDto.id, currentTime + Math.round(heroDto.attackCooldown));
+			messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(heroDto.attackCooldown / 1000));
 		} catch (CharacterNotFoundException e) {
 			// TODO: handle/log
 		}

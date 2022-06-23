@@ -14,6 +14,7 @@ import com.google.gson.JsonObject;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.exception.CharacterNotFoundException;
+import net.calebscode.mythlands.exception.InvalidCharacterException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
 import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
 
@@ -81,9 +82,15 @@ public class MythlandsCharacterService {
 	}
 	
 	@Transactional
-	public JsonObject useSkillPoint(int heroId, SpendSkillPointMessage spend) throws CharacterNotFoundException {
-		MythlandsCharacter hero = getCharacter(heroId);
-		if(hero.getSkillPoints() < 1) {
+	public JsonObject useSkillPoint(int heroId, SpendSkillPointMessage spend) throws CharacterNotFoundException, InvalidCharacterException {
+		MythlandsCharacter hero = characterRepository.findById(heroId);
+		if(hero == null) {
+			throw new CharacterNotFoundException("No character with id " + heroId + " found.");
+		}
+		else if(hero.isDeceased()) {
+			throw new InvalidCharacterException("Hero is dead.");
+		}
+		else if(hero.getSkillPoints() < 1) {
 			throw new IllegalArgumentException("No skill points available to spend.");
 		}
 		
@@ -93,41 +100,57 @@ public class MythlandsCharacterService {
 		
 		switch(spend.skill) {
 		
-			case ATTUNEMENT:
-				hero.modifyAttunement(1);
-				updates.addProperty("attunement", hero.getAttunement());
-				break;
-				
-			case AVOIDANCE:
-				hero.modifyAvoidance(1);
-				updates.addProperty("avoidance", hero.getAvoidance());
-				break;
-				
-			case DEXTERITY:
-				hero.modifyDexterity(1);
-				updates.addProperty("dexterity", hero.getDexterity());
-				break;
-				
-			case RESISTANCE:
-				hero.modifyResistance(1);
-				updates.addProperty("resistance", hero.getResistance());
-				break;
-				
-			case STRENGTH:
-				hero.modifyStrength(1);
-				updates.addProperty("strength", hero.getStrength());
-				break;
-				
-			case TOUGHNESS:
-				hero.modifyToughness(1);
-				updates.addProperty("toughness", hero.getToughness());
-				break;
-				
-			default:
-				//TODO: handle
-				break;
+		case ATTUNEMENT:
+			hero.getAttunement().modifyBase(1);
+			updates.addProperty("attunement", hero.getAttunement().getValue());
+			break;
+			
+		case AVOIDANCE:
+			hero.getAvoidance().modifyBase(1);
+			updates.addProperty("avoidance", hero.getAvoidance().getValue());
+			break;
+			
+		case DEXTERITY:
+			hero.getDexterity().modifyBase(1);
+			updates.addProperty("dexterity", hero.getDexterity().getValue());
+			break;
+			
+		case RESISTANCE:
+			hero.getResistance().modifyBase(1);
+			updates.addProperty("resistance", hero.getResistance().getValue());
+			break;
+			
+		case STRENGTH:
+			hero.getStrength().modifyBase(1);
+			updates.addProperty("strength", hero.getStrength().getValue());
+			break;
+			
+		case TOUGHNESS:
+			hero.getToughness().modifyBase(1);
+			updates.addProperty("toughness", hero.getToughness().getValue());
+			break;
+			
+		case SPIRIT:
+			hero.getSpirit().modifyBase(1);
+			hero.recalculateMaxMana();
+			updates.addProperty("spirit", hero.getSpirit().getValue());
+			updates.addProperty("currentMana", hero.getCurrentMana());
+			updates.addProperty("maxMana", hero.getMaxMana());
+			break;
+			
+		case STAMINA:
+			hero.getStamina().modifyBase(1);
+			hero.recalculateMaxHealth();
+			updates.addProperty("stamina", hero.getStamina().getValue());
+			updates.addProperty("currentHealth", hero.getCurrentHealth());
+			updates.addProperty("maxHealth", hero.getMaxHealth());
+			break;
+			
+		default:
+			// TODO: error
+			break;
 		
-		}
+		}		
 		
 		return updates;
 	}

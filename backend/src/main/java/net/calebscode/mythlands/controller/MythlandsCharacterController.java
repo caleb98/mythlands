@@ -17,6 +17,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.exception.CharacterCreationException;
+import net.calebscode.mythlands.exception.CharacterNotFoundException;
+import net.calebscode.mythlands.exception.InvalidCharacterException;
 import net.calebscode.mythlands.exception.NoActiveCharacterException;
 import net.calebscode.mythlands.exception.UserNotFoundException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
@@ -24,12 +26,14 @@ import net.calebscode.mythlands.messages.out.CharacterListMessage;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
 import net.calebscode.mythlands.messages.out.ServerMessage;
+import net.calebscode.mythlands.service.MythlandsCharacterService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
 public class MythlandsCharacterController {
 
 	@Autowired private MythlandsUserService userService;
+	@Autowired private MythlandsCharacterService characterService;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
 	
@@ -63,10 +67,11 @@ public class MythlandsCharacterController {
 	@Transactional
 	public void spendSkillPoint(SpendSkillPointMessage spend, Principal principal) {
 		try {
-			JsonObject updates = userService.useSkillPoint(principal.getName(), spend);
+			var active = userService.getActiveCharacter(principal.getName());
+			JsonObject updates = characterService.useSkillPoint(active.id, spend);
 			messenger.convertAndSendToUser(principal.getName(), "/local/character",
 					gson.toJson(new CharacterUpdateMessage(updates)));
-		} catch (IllegalArgumentException | UserNotFoundException | NoActiveCharacterException e) {
+		} catch (NoActiveCharacterException | UserNotFoundException | CharacterNotFoundException | InvalidCharacterException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));
 		}
 	}
