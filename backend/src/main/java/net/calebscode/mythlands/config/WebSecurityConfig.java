@@ -16,7 +16,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import net.calebscode.mythlands.service.MythlandsUserDetailsService;
+import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Configuration
 @EnableWebSecurity
@@ -50,7 +50,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 	@Bean
 	@Override
 	protected UserDetailsService userDetailsService() {
-		return new MythlandsUserDetailsService();
+		return new MythlandsUserService();
 	}
 	
 	@Bean

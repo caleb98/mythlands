@@ -8,27 +8,24 @@ import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.google.gson.JsonObject;
-
+import net.calebscode.mythlands.core.MythlandsUserDetails;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.entity.MythlandsUser;
-import net.calebscode.mythlands.exception.CharacterCreationException;
-import net.calebscode.mythlands.exception.ChatGroupNotFoundException;
-import net.calebscode.mythlands.exception.NoActiveCharacterException;
-import net.calebscode.mythlands.exception.UserNotFoundException;
-import net.calebscode.mythlands.exception.UserRegistrationException;
-import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
+import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.out.CharacterListMessage;
 import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
 import net.calebscode.mythlands.repository.MythlandsUserRepository;
 
 @Service
-public class MythlandsUserService {
+public class MythlandsUserService implements UserDetailsService {
 
 	public static final Pattern VALID_EMAIL_ADDRESS_REGEX = 
 		    Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
@@ -42,42 +39,42 @@ public class MythlandsUserService {
 	
 	@Transactional
 	public void createNewUser(String username, String email, String password, String passwordConfirm) 
-			throws UserRegistrationException {
+			throws MythlandsServiceException {
 		
 		// Check email/username availability
 		if(email != null && userRepository.findByEmail(email) != null) {
-			throw new UserRegistrationException("A user with that email already exists.");
+			throw new MythlandsServiceException("A user with that email already exists.");
 		}
 		else if(userRepository.findByUsername(username) != null) {
-			throw new UserRegistrationException("A user with that username already exists.");
+			throw new MythlandsServiceException("A user with that username already exists.");
 		}
 		
 		// Check username length
 		if(username.length() < 8 || username.length() > 25) {
-			throw new UserRegistrationException("Username must be 8 to 25 characters long.");
+			throw new MythlandsServiceException("Username must be 8 to 25 characters long.");
 		}
 		
 		// Check username characters
 		Matcher usernameMatcher = VALID_USERNAME_REGEX.matcher(username);
 		if(!usernameMatcher.matches()) {
-			throw new UserRegistrationException("Username contains an invalid character. Only letters and numbers may be used.");
+			throw new MythlandsServiceException("Username contains an invalid character. Only letters and numbers may be used.");
 		}
 		
 		// Validate email
 		if(email != null) {
 			Matcher emailMatcher = VALID_EMAIL_ADDRESS_REGEX.matcher(email);
 			if(!emailMatcher.matches()) {
-				throw new UserRegistrationException("Invalid email.");
+				throw new MythlandsServiceException("Invalid email.");
 			}
 		}
 		
 		// Validate password
 		if(!password.equals(passwordConfirm)) {
-			throw new UserRegistrationException("Your passwords do not match.");
+			throw new MythlandsServiceException("Your passwords do not match.");
 		}
 		
 		if(password.length() < 10 || password.length() > 75) {
-			throw new UserRegistrationException("Password must be 10 to 75 characters in length.");
+			throw new MythlandsServiceException("Password must be 10 to 75 characters in length.");
 		}
 		
 		// Hash the password
@@ -94,7 +91,7 @@ public class MythlandsUserService {
 		// Register the user in the global chat channel
 		try {
 			chatService.addUserToGroup(user.getId(), 1);
-		} catch (ChatGroupNotFoundException | UserNotFoundException e) {
+		} catch (MythlandsServiceException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -102,12 +99,12 @@ public class MythlandsUserService {
 	
 	@Transactional
 	public void createNewCharacter(String username, String firstName, String lastName) 
-			throws CharacterCreationException, UserNotFoundException {
+			throws MythlandsServiceException {
 		MythlandsUser user = getUser(username);
 		
 		boolean hasAlive = user.getCharacters().stream().anyMatch(c -> !c.isDeceased());
 		if(hasAlive) {
-			throw new CharacterCreationException("You already have a living character. You may only have one character at a time.");
+			throw new MythlandsServiceException("You already have a living character. You may only have one character at a time.");
 		}
 		
 		MythlandsCharacter newChar = new MythlandsCharacter();
@@ -120,20 +117,20 @@ public class MythlandsUserService {
 		userRepository.save(user);
 	}
 	
-	public MythlandsUserDTO getUserInfo(String username) throws UserNotFoundException {
+	public MythlandsUserDTO getUserInfo(String username) throws MythlandsServiceException {
 		return new MythlandsUserDTO(getUser(username));
 	}
 	
-	public MythlandsCharacterDTO getActiveCharacter(String username) throws UserNotFoundException, NoActiveCharacterException {
+	public MythlandsCharacterDTO getActiveCharacter(String username) throws MythlandsServiceException {
 		MythlandsUser user = getUser(username);
 		MythlandsCharacter hero = user.getActiveCharacter();
 		if(hero == null) {
-			throw new NoActiveCharacterException("You have no active character.");
+			throw new MythlandsServiceException("You have no active character.");
 		}
 		return new MythlandsCharacterDTO(hero);
 	}
 	
-	public CharacterListMessage getCharacterList(String username) throws UserNotFoundException {
+	public CharacterListMessage getCharacterList(String username) throws MythlandsServiceException {
 		MythlandsUser user = getUser(username);
 		
 		List<MythlandsCharacterDTO> characters = user.getCharacters().stream()
@@ -144,12 +141,21 @@ public class MythlandsUserService {
 		return new CharacterListMessage(characters, activeCharacterId);
 	}
 	
-	private MythlandsUser getUser(String username) throws UserNotFoundException {
+	private MythlandsUser getUser(String username) throws MythlandsServiceException {
 		MythlandsUser user = userRepository.findByUsername(username);
 		if(user == null) {
-			throw new UserNotFoundException("No user with username " + username + " found.");
+			throw new MythlandsServiceException("No user with username " + username + " found.");
 		}
 		return user;
+	}
+
+	@Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		MythlandsUser user = userRepository.findByUsername(username);
+		if(user == null) {
+			throw new UsernameNotFoundException("User not found");
+		}
+		return new MythlandsUserDetails(user);
 	}
 	
 }

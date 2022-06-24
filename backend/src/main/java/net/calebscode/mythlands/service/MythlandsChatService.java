@@ -17,8 +17,7 @@ import net.calebscode.mythlands.entity.ChatGroup;
 import net.calebscode.mythlands.entity.ChatMessage;
 import net.calebscode.mythlands.entity.ChatReport;
 import net.calebscode.mythlands.entity.MythlandsUser;
-import net.calebscode.mythlands.exception.ChatGroupNotFoundException;
-import net.calebscode.mythlands.exception.UserNotFoundException;
+import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.repository.MythlandsChatGroupRepository;
 import net.calebscode.mythlands.repository.MythlandsChatReportRepository;
 import net.calebscode.mythlands.repository.MythlandsChatRepository;
@@ -33,7 +32,7 @@ public class MythlandsChatService {
 	@Autowired private MythlandsUserRepository userRepository;
 	
 	@Transactional
-	public ChatMessageDTO logMessage(int userId, int groupId, String messageText) throws UserNotFoundException, ChatGroupNotFoundException {
+	public ChatMessageDTO logMessage(int userId, int groupId, String messageText) throws MythlandsServiceException {
 		MythlandsUser user = getUser(userId);
 		ChatGroup group = getGroup(groupId);
 		
@@ -48,20 +47,20 @@ public class MythlandsChatService {
 	}
 	
 	@Transactional
-	public void addUserToGroup(int userId, int groupId) throws ChatGroupNotFoundException, UserNotFoundException {
+	public void addUserToGroup(int userId, int groupId) throws MythlandsServiceException {
 		MythlandsUser user = getUser(userId);
 		ChatGroup group = getGroup(groupId);
 		group.getUsers().add(user);
 	}
 	
 	@Transactional
-	public void removeUserFromGroup(int userId, int groupId) throws ChatGroupNotFoundException {
+	public void removeUserFromGroup(int userId, int groupId) throws MythlandsServiceException {
 		ChatGroup group = getGroup(groupId);
 		group.getUsers().removeIf(u -> u.getId() == userId);
 	}
 	
 	@Transactional
-	public Set<MythlandsUserDTO> getGroupUsers(int groupId) throws ChatGroupNotFoundException {
+	public Set<MythlandsUserDTO> getGroupUsers(int groupId) throws MythlandsServiceException {
 		ChatGroup group = getGroup(groupId);
 		Set<MythlandsUserDTO> users = group.getUsers().stream()
 				.map(user -> new MythlandsUserDTO(user))
@@ -71,13 +70,13 @@ public class MythlandsChatService {
 	}
 	
 	@Transactional
-	public boolean hasChatPermissions(int userId, int groupId) throws ChatGroupNotFoundException {
+	public boolean hasChatPermissions(int userId, int groupId) throws MythlandsServiceException {
 		ChatGroup group = getGroup(groupId);
 		return group.hasUser(userId);
 	}
 	
 	@Transactional
-	public ChatReportDTO addChatReport(int messageId, int userId) throws UserNotFoundException {
+	public ChatReportDTO addChatReport(int messageId, int userId) throws MythlandsServiceException {
 		MythlandsUser user = getUser(userId);
 		ChatMessage message = chatRepository.findById(messageId).orElse(null);
 		if(message == null) {
@@ -90,18 +89,18 @@ public class MythlandsChatService {
 		return new ChatReportDTO(report);
 	}
 	
-	private MythlandsUser getUser(int userId) throws UserNotFoundException {
+	private MythlandsUser getUser(int userId) throws MythlandsServiceException {
 		MythlandsUser user = userRepository.findById(userId).orElse(null);
 		if(user == null)  {
-			throw new UserNotFoundException("User with id " + userId + " not found.");
+			throw new MythlandsServiceException("User with id " + userId + " not found.");
 		}
 		return user;
 	}
 	
-	private ChatGroup getGroup(int groupId) throws ChatGroupNotFoundException {
+	private ChatGroup getGroup(int groupId) throws MythlandsServiceException {
 		Optional<ChatGroup> group = groupRepository.findById(groupId);
 		if(group.isEmpty()) {
-			throw new ChatGroupNotFoundException("No chat group with id " + groupId + " was found.");
+			throw new MythlandsServiceException("No chat group with id " + groupId + " was found.");
 		}
 		return group.get();
 	}

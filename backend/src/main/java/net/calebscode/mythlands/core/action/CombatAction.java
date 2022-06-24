@@ -16,16 +16,13 @@ import net.calebscode.mythlands.core.Boss;
 
 @Entity
 public class CombatAction {
-
-	@Autowired
-	private static CombatActionFunctionManager functionManager;
 	
 	@Id
 	private String id;
 	
 	@ElementCollection
 	@CollectionTable(name = "combat_action_data")
-	@MapKeyColumn(name = "action_id")
+	@MapKeyColumn(name = "data_key")
 	private Map<String, String> actionData;
 	
 	@Column(nullable = false)
@@ -33,17 +30,33 @@ public class CombatAction {
 	
 	@SuppressWarnings("unused")
 	private CombatAction() {
-		this(null, null);
+		this(null, null, new HashMap<>());
 	}
 	
-	public CombatAction(String id, String functionName) {
+	public CombatAction(String id, String functionName, Map<String, String> data) {
 		this.id = id;
 		this.functionName = functionName;
-		actionData = new HashMap<>();
+		actionData = data;
 	}
-	
-	public void execute(int heroId, Boss boss) {
-		functionManager.getFunction(functionName).execute(heroId, boss, actionData);
+
+	public Map<String, String> getActionData() {
+		return actionData;
+	}
+
+	public void setActionData(Map<String, String> actionData) {
+		this.actionData = actionData;
+	}
+
+	public String getFunctionName() {
+		return functionName;
+	}
+
+	public void setFunctionName(String functionName) {
+		this.functionName = functionName;
+	}
+
+	public String getId() {
+		return id;
 	}
 	
 }

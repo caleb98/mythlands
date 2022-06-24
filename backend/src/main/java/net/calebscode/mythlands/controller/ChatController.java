@@ -10,8 +10,7 @@ import org.springframework.stereotype.Controller;
 
 import net.calebscode.mythlands.dto.ChatMessageDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
-import net.calebscode.mythlands.exception.ChatGroupNotFoundException;
-import net.calebscode.mythlands.exception.UserNotFoundException;
+import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.in.ChatReportMessage;
 import net.calebscode.mythlands.messages.in.SendChatMessage;
 import net.calebscode.mythlands.messages.out.EchoChatMessage;
@@ -52,7 +51,7 @@ public class ChatController {
 				);
 			}
 			
-		} catch (UserNotFoundException | ChatGroupNotFoundException e) {
+		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 			return;
 		}
@@ -64,7 +63,7 @@ public class ChatController {
 			MythlandsUserDTO user = userService.getUserInfo(principal.getName());
 			chatService.addChatReport(report.messageId, user.id);
 			// TODO: send confirmation for report
-		} catch (UserNotFoundException e) {
+		} catch (MythlandsServiceException e) {
 			// TODO send report fail?
 			e.printStackTrace();
 		}

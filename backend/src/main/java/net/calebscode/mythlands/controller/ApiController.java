@@ -13,13 +13,13 @@ import com.google.gson.Gson;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.messages.out.HallOfFameMessage;
 import net.calebscode.mythlands.messages.out.ServerMessage;
-import net.calebscode.mythlands.service.MythlandsCharacterService;
+import net.calebscode.mythlands.service.MythlandsGameService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
 public class ApiController {
 
-	@Autowired MythlandsCharacterService characterService;
+	@Autowired MythlandsGameService gameService;
 	@Autowired MythlandsUserService userService;
 	@Autowired Gson gson;
 	
@@ -34,7 +34,7 @@ public class ApiController {
 		else if(pageNum < 0) {
 			return new ServerMessage("Error, invalid page number.", true);
 		}
-		List<MythlandsCharacterDTO> characters = characterService.getHallOfFameCharacters(pageSize, pageNum);
+		List<MythlandsCharacterDTO> characters = gameService.getHallOfFameCharacters(pageSize, pageNum);
 		return new ServerMessage("Success!", new HallOfFameMessage(characters, pageSize, pageNum));
 	}
 	

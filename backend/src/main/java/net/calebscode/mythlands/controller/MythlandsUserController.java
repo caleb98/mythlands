@@ -12,8 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
-import net.calebscode.mythlands.exception.UserNotFoundException;
-import net.calebscode.mythlands.exception.UserRegistrationException;
+import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.out.ServerMessage;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
@@ -31,7 +30,7 @@ public class MythlandsUserController {
 		try {
 			MythlandsUserDTO info = userService.getUserInfo(auth.getName());
 			return new ServerMessage("Success!", info);
-		} catch (UserNotFoundException e) {
+		} catch (MythlandsServiceException e) {
 			return new ServerMessage(e.getMessage(), true);
 		}
 	}
@@ -47,7 +46,7 @@ public class MythlandsUserController {
 		
 		try {
 			userService.createNewUser(username, null, password, passwordConfirm);
-		} catch (UserRegistrationException e) {
+		} catch (MythlandsServiceException e) {
 			return new ServerMessage(e.getMessage(), true);
 		}
 		

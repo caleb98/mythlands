@@ -3,10 +3,9 @@ package net.calebscode.mythlands.controller;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import javax.annotation.PostConstruct;
-
-import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -21,27 +20,21 @@ import com.google.gson.JsonObject;
 import net.calebscode.mythlands.core.Boss;
 import net.calebscode.mythlands.core.ContributionInfo;
 import net.calebscode.mythlands.core.NameGenerator;
-import net.calebscode.mythlands.core.item.ItemRarity;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
-import net.calebscode.mythlands.exception.CharacterNotFoundException;
-import net.calebscode.mythlands.exception.ItemNotFoundException;
-import net.calebscode.mythlands.exception.NoActiveCharacterException;
-import net.calebscode.mythlands.exception.UserNotFoundException;
+import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.in.AttackMessage;
 import net.calebscode.mythlands.messages.out.BossDiedMessage;
 import net.calebscode.mythlands.messages.out.BossStatusMessage;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.CooldownMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
-import net.calebscode.mythlands.service.MythlandsCharacterService;
-import net.calebscode.mythlands.service.MythlandsItemService;
+import net.calebscode.mythlands.service.MythlandsGameService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Controller
 public class BossController {
 	
-	@Autowired private MythlandsCharacterService characterService;
-	@Autowired private MythlandsItemService itemService;
+	@Autowired private MythlandsGameService gameService;
 	@Autowired private MythlandsUserService userService;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
@@ -66,7 +59,7 @@ public class BossController {
 		MythlandsCharacterDTO heroDto;
 		try {
 			heroDto = userService.getActiveCharacter(principal.getName());
-		} catch (UserNotFoundException | NoActiveCharacterException e) {
+		} catch (MythlandsServiceException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", 
 					new ErrorMessage(e.getMessage()));
 			return;
@@ -74,10 +67,10 @@ public class BossController {
 		
 		// Make sure that the character is living
 		try {
-			if(characterService.isDeceased(heroDto.id)) {
+			if(gameService.isDeceased(heroDto.id)) {
 				return;
 			}
-		} catch (CharacterNotFoundException e) {
+		} catch (MythlandsServiceException e) {
 			// TODO: log this error
 		}
 		
@@ -127,26 +120,20 @@ public class BossController {
 		messenger.convertAndSend("/global/boss.status", new BossStatusMessage(boss));
 
 		// Do attack post-processing
-		try {
-			var item = itemService.createNewItem("Loot", ItemRarity.COMMON);
-			characterService.addInventoryItem(heroDto.id, item.id);
-			
+		try {			
 			// TODO: implement damage calculation
-			JsonObject receivedDamageUpdate = characterService.dealDamage(heroDto.id, 1);
-			JsonObject xpUpdate = characterService.grantXp(heroDto.id, 1);
+			JsonObject receivedDamageUpdate = gameService.dealDamage(heroDto.id, 1);
+			JsonObject xpUpdate = gameService.grantXp(heroDto.id, 1);
 			// TODO: xp gain modifier
 			// TODO: gold?
 			messenger.convertAndSendToUser(principal.getName(), "/local/character", 
 					gson.toJson(new CharacterUpdateMessage(receivedDamageUpdate, xpUpdate)));
 			
 			// Attack cooldown
-			characterService.setAttackCooldown(heroDto.id, currentTime + Math.round(heroDto.attackCooldown));
+			gameService.setAttackCooldown(heroDto.id, currentTime + Math.round(heroDto.attackCooldown));
 			messenger.convertAndSendToUser(principal.getName(), "/local/cooldown", new CooldownMessage(heroDto.attackCooldown / 1000));
-		} catch (CharacterNotFoundException e) {
+		} catch (MythlandsServiceException e) {
 			// TODO: handle/log
-		} catch (ItemNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 	}
 	
@@ -158,23 +145,23 @@ public class BossController {
 			
 			// Make sure the contributing hero is not dead
 			try {
-				if(characterService.isDeceased(heroId)) {
+				if(gameService.isDeceased(heroId)) {
 					continue;
 				}
-			} catch (CharacterNotFoundException e) {
+			} catch (MythlandsServiceException e) {
 				continue;
 			}
 			
 			// Add their xp
 			int xpGained = 5 + (contrib.dealtKillingBlow() ? 5 : 0);
 			try {
-				JsonObject updates = characterService.grantXp(heroId, xpGained);
+				JsonObject updates = gameService.grantXp(heroId, xpGained);
 				messenger.convertAndSendToUser(
 						contrib.getUsername(),
 						"/local/character", 
 						gson.toJson(new CharacterUpdateMessage(updates))
 				);
-			} catch (CharacterNotFoundException e) {
+			} catch (MythlandsServiceException e) {
 				// TODO: Log this error or handle it more gracefully (shouldn't happen in production, though)
 			}
 		}

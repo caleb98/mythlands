@@ -16,7 +16,7 @@ public class ChatMessageDTO {
 	
 	public ChatMessageDTO(ChatMessage chatMessage) {
 		id = chatMessage.getId();
-		timestamp = chatMessage.getTimestamp();
+		timestamp = Instant.from(chatMessage.getTimestamp());
 		userId = chatMessage.getUser().getId();
 		username = chatMessage.getUser().getUsername();
 		groupId = chatMessage.getGroup().getId();

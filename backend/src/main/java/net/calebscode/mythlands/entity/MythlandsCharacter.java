@@ -4,6 +4,7 @@ import java.util.List;
 
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
@@ -11,12 +12,13 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import net.calebscode.mythlands.core.StatValue;
-import net.calebscode.mythlands.core.item.MythlandsItem;
+import net.calebscode.mythlands.core.item.ItemInstance;
 
 @Entity
 @Table(name = "characters")
@@ -43,10 +45,12 @@ public class MythlandsCharacter {
 	@JoinColumn(name = "owner_id")
 	private MythlandsUser owner;
 	
-	@OneToMany(mappedBy = "characterOwner")
-	private List<MythlandsItem> inventory;
+	@OneToMany(cascade = CascadeType.ALL)
+	@JoinTable(inverseJoinColumns = @JoinColumn(name = "item_instance_id"))
+	private List<ItemInstance> inventory;
 	
-	@Column(nullable = false) private int inventoryCapacity = 100;
+	@Column(nullable = false) 
+	private int inventoryCapacity = 100;
 	
 	/********************************************************/
 	/*                     Core Stats                       */
@@ -251,7 +255,7 @@ public class MythlandsCharacter {
 		inventoryCapacity = size;
 	}
 	
-	public List<MythlandsItem> getInventory() {
+	public List<ItemInstance> getInventory() {
 		return inventory;
 	}
 	

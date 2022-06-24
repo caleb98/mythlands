@@ -1,14 +1,10 @@
 package net.calebscode.mythlands.core;
 
 import java.util.HashMap;
-import java.util.concurrent.Future;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -18,11 +14,9 @@ import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
-import net.calebscode.mythlands.exception.CharacterNotFoundException;
-import net.calebscode.mythlands.exception.NoActiveCharacterException;
-import net.calebscode.mythlands.exception.UserNotFoundException;
+import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
-import net.calebscode.mythlands.service.MythlandsCharacterService;
+import net.calebscode.mythlands.service.MythlandsGameService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
 @Component
@@ -33,7 +27,7 @@ public class CharacterSessionManager {
 	public static final int HERO_UPDATE_INTERVAL = 5000;
 
 	@Autowired private MythlandsUserService userService;
-	@Autowired private MythlandsCharacterService characterService;
+	@Autowired private MythlandsGameService gameService;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
 	
@@ -47,7 +41,7 @@ public class CharacterSessionManager {
 			MythlandsUserDTO info;
 			try {
 				info = userService.getUserInfo(event.getUser().getName());
-			} catch (UserNotFoundException e) {
+			} catch (MythlandsServiceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return;
@@ -77,7 +71,7 @@ public class CharacterSessionManager {
 			MythlandsUserDTO info;
 			try {
 				info = userService.getUserInfo(event.getUser().getName());
-			} catch (UserNotFoundException e) {
+			} catch (MythlandsServiceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return;
@@ -169,7 +163,7 @@ public class CharacterSessionManager {
 				MythlandsCharacterDTO heroDto;
 				try {
 					heroDto = userService.getActiveCharacter(username);
-				} catch (NoActiveCharacterException e) {
+				} catch (MythlandsServiceException e) {
 					return;
 				}
 					
@@ -181,8 +175,8 @@ public class CharacterSessionManager {
 				// Regen health and mana
 				double hpAmount = heroDto.maxHealth * 0.1;
 				double manaAmount = heroDto.maxMana * 0.1;
-				JsonObject hpRegen = characterService.gainHealth(heroDto.id, hpAmount);
-				JsonObject manaRegen = characterService.gainMana(heroDto.id, manaAmount);
+				JsonObject hpRegen = gameService.gainHealth(heroDto.id, hpAmount);
+				JsonObject manaRegen = gameService.gainMana(heroDto.id, manaAmount);
 				heroDto = userService.getActiveCharacter(username);
 				
 				// If the hp/mana regen changed anything, send the updates
@@ -190,7 +184,7 @@ public class CharacterSessionManager {
 					messenger.convertAndSendToUser(username, "/local/character", 
 							gson.toJson(new CharacterUpdateMessage(hpRegen, manaRegen)));
 				}
-			} catch (CharacterNotFoundException | UserNotFoundException | NoActiveCharacterException e) {
+			} catch (MythlandsServiceException e) {
 				e.printStackTrace();
 				System.err.println(e.getMessage());
 			}
