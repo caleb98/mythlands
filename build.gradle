@@ -1,37 +1,26 @@
-tasks.register('updateFrontend') {
-    doLast {
-        copy {
-            from './frontend/dist/'
-            into './backend/src/main/resources/static/'           
-        }
-    }
+def updateStaticResources = tasks.register('updateStaticResources', Copy) {
+    from './frontend/dist/'
+    into './backend/src/main/resources/static/'
 }
 
-tasks.register('frontendDevUpdate') {
-    dependsOn 'frontend:buildDevelopment'
-    doLast {
-        copy {
-            from './frontend/dist/'
-            into './backend/src/main/resources/static/'           
-        }
-    }
+updateStaticResources.configure {
+    mustRunAfter 'frontend:build'
+    mustRunAfter 'frontend:buildDev'
 }
 
-tasks.register('updateBuild', Copy) {
-    dependsOn 'backend:build'
+def updateDist = tasks.register('updateDist', Copy) {
     from './backend/build/libs'
-    into './build'  
+    into './build'
 }
 
-tasks.register('build', GradleBuild) {
-    tasks = ['frontend:build', 'updateFrontend', 'backend:build', 'updateBuild']
+updateDist.configure {
+    mustRunAfter 'backend:build'
 }
 
-tasks.register('buildDev', GradleBuild) {
-    tasks = ['frontend:buildDevelopment', 'updateFrontend', 'backend:build', 'updateBuild']
+tasks.register('dist', GradleBuild) {
+    tasks = ['frontend:build', 'updateStaticResources', 'backend:build', 'updateDist']
 }
 
-tasks.register('serve', GradleBuild) {
-    dependsOn 'build'
-    tasks = ['backend:bootRun']
+tasks.register('distDev', GradleBuild) {
+    tasks = ['frontend:buildDev', 'updateStaticResources', 'backend:build', 'updateDist']
 }

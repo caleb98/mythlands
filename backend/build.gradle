@@ -4,6 +4,13 @@ plugins {
 	id 'java'
 }
 
+configurations {
+	frontendResources {
+		canBeConsumed = false
+		canBeResolved = true
+	}
+}
+
 group = 'net.calebscode'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '17'
@@ -21,8 +28,19 @@ dependencies {
 	implementation 'org.springframework.security:spring-security-messaging'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'mysql:mysql-connector-java'
+
+	frontendResources(project(path: ':frontend', configuration: 'staticResources'))
 }
 
 test {
 	useJUnitPlatform()
+}
+
+
+tasks.named('build').configure {
+	mustRunAfter ':updateStaticResources'
+}
+
+tasks.named('processResources').configure {
+	dependsOn ':updateStaticResources'
 }
