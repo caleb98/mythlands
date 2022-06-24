@@ -1,8 +1,5 @@
 package net.calebscode.mythlands.dto;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 
 public class MythlandsCharacterDTO {
@@ -37,8 +34,6 @@ public class MythlandsCharacterDTO {
 	public final double xpGain;
 	public final double attackCooldown;
 	
-	public final List<ItemInstanceDTO> inventory;
-	
 	public MythlandsCharacterDTO(MythlandsCharacter hc) {
 		id = hc.getId();
 		
@@ -69,10 +64,6 @@ public class MythlandsCharacterDTO {
 		goldGain = hc.getGoldGain().getValue();
 		xpGain = hc.getXpGain().getValue();
 		attackCooldown = hc.getAttackCooldown().getValue();
-		
-		inventory = hc.getInventory().stream()
-				.map(ItemInstanceDTO::new)
-				.collect(Collectors.toList());
 	}
 	
 }
