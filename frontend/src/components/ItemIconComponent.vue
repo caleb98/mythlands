@@ -1,6 +1,7 @@
 <template>
 	<div class="item-icon-container p-2 m-2">
 		<img :src="'/img' + displayItem.template.icon" class="item-icon-image">
+		<div class="item-count" v-if="displayItem.template.stackSize != 1">{{displayItem.count}}</div>
 	</div>
 </template>
 
@@ -15,6 +16,7 @@ export default {
 
 <style scoped>
 .item-icon-container {
+	position: relative;
 	border: 1px solid black;
 	border-radius: 3px;
 	background-color: #bb9255;
@@ -30,5 +32,12 @@ export default {
 	height: 32px;
 	image-rendering: pixelated;
 	image-rendering: crisp-edges;
+}
+
+.item-count {
+	position: absolute;
+	bottom: 0%;
+	right: 5%;
+	color: yellow;
 }
 </style>
