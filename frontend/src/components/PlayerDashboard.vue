@@ -1,6 +1,7 @@
 <template>
 	<div>
-		<div class="container-fluid p-2 framed mb-2" v-if="activeCharacter != null">
+		<!-- Attack Buttons -->
+		<div class="container-fluid p-2 framed mb-2 position-relative" v-if="activeCharacter != null">
 			<div class="row">
 				<div class="col">
 					<button type="button" class="btn btn-danger" @click="attack()" :disabled="cooldownTime > 0 || isCharacterDeceased">Attack</button>
@@ -8,6 +9,8 @@
 			</div>
 			<div id="recharge-box" :style="{ 'animation-duration': cooldownTime + 's' }"></div>
 		</div>
+
+		<!-- Character Creation -->
 		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="showCharacterCreator">
 			<div class="row justify-content-center">
 				<div class="col-6">
@@ -15,7 +18,11 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Active Character Display -->
 		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="activeCharacter != null">
+
+			<!-- Death Overlay -->
 			<div id="death-overlay" class="container-fluid" v-if="activeCharacter.isDeceased">
 				<div class="row justify-content-center align-items-center" style="height: 100%">
 					<div class="col">
@@ -24,6 +31,8 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Character Name and Username -->
 			<div class="row justify-content-center mb-4 character-name">
 				<div class="col text-center">
 					<b class="fs-4">{{fullCharacterName}}</b>
