@@ -139,8 +139,8 @@
 			<div class="row inventory-frame mx-0 mt-2">
 				<div class="col-12">
 					<div class="row">
-						<div class="col-auto p-0" v-for="itemInstance in activeCharacterInventory" :key="itemInstance.id">
-							<ItemIconComponent :displayItem="itemInstance"/>
+						<div class="col-auto p-0" v-for="(n, slot) in activeCharacter.inventoryCapacity" :key="slot">
+							<ItemIconComponent :displayItem="activeCharacterInventory[slot]" :itemSlot="slot"/>
 						</div>
 					</div>
 				</div>
@@ -258,6 +258,7 @@ export default {
 			this.activeCharacter.skillPoints -= 1;
 		}
 	},
+
 	computed: {
 		activeCharacter() {
 			if(this.activeCharacterId == -1) {
@@ -355,12 +356,26 @@ export default {
 				this.cooldownTime = body.attackCooldown;
 			});
 
-		// TODO: inventory sub
+		this.inventorySub = WS.watch("/user/local/inventory")
+			.pipe(map(message => {
+				return JSON.parse(message.body)
+			}))
+			.subscribe(changes => {
+				for(var slot in changes) {
+					if(changes[slot] == null) {
+						delete this.activeCharacterInventory[slot];
+					}
+					else {
+						this.activeCharacterInventory[slot] = changes[slot];
+					}
+				}
+			});
 	},
 
 	unmounted() {
 		this.characterStatusSub.unsubscribe();
 		this.cooldownSub.unsubscribe();
+		this.inventorySub.unsubscribe();
 	}
 }
 </script>

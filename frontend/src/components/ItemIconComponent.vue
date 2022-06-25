@@ -1,14 +1,21 @@
 <template>
-	<div class="item-icon-container p-2 m-2"
-		:id="'item-icon-' + displayItem.id"
+	<div class="item-icon-container p-2 m-1"
+		:id="elementId"
 		@mouseenter="hoverStart"
-		@mouseleave="hoverEnd">
+		@mouseleave="hoverEnd"
+		@dragover="allowDrop"
+		@drop="drop">
 
-		<img :src="'/img' + displayItem.template.icon" class="item-icon-image">
-		<div class="item-count-wrapper">
-			<div class="item-count" v-if="displayItem.template.stackSize != 1">{{displayItem.count}}</div>
+
+		<div draggable="true" style="background-color: #00000000" @dragstart="drag">
+			<img :src="'/img' + icon" class="item-icon-image" draggable="false">
+
+			<div class="item-count-wrapper" v-if="displayItem">
+				<div class="item-count" v-if="displayItem.template.stackSize != 1">{{displayItem.count}}</div>
+			</div>
 		</div>
-		<ItemTooltip v-if="hovering" 
+
+		<ItemTooltip v-if="hovering && displayItem" 
 			:itemInstance="displayItem" 
 			:maxWidth="300" 
 			:xPos="tooltipX"
@@ -19,6 +26,7 @@
 <script>
 import ItemTooltip from './ItemTooltip.vue';
 import $ from 'jquery';
+import WS from '../services/wsclient';
 
 export default {
 	name: 'ItemIconComponent',
@@ -26,7 +34,8 @@ export default {
 		ItemTooltip,
 	},
 	props: {
-		displayItem: Object
+		displayItem: Object,
+		itemSlot: Number
 	},
 
 	data() {
@@ -55,20 +64,62 @@ export default {
 				borderColor: this.rarityColor,
 				color: this.rarityColor
 			}
+		},
+
+		icon() {
+			if(this.displayItem) {
+				return this.displayItem.template.icon;
+			}
+			else {
+				return "/item/empty.png";
+			}
+		},
+
+		elementId() {
+			return 'item-slot-' + this.itemSlot;
 		}
 	},
 
 	methods: {
 		hoverStart() {
-			this.hovering = true;
-			let element = $("#item-icon-" + this.displayItem.id);
-			this.tooltipX = element.offset().left+ element.outerWidth();
-			this.tooltipY = element.offset().top + element.outerHeight();
+			if(this.displayItem) {
+				this.hovering = true;
+				let element = $("#" + this.elementId);
+				this.tooltipX = element.offset().left+ element.outerWidth();
+				this.tooltipY = element.offset().top + element.outerHeight();
+			}
 		},
 
 		hoverEnd() {
+			if(this.displayItem) {
+				this.hovering = false;
+			}
+		},
+
+		allowDrop(event) {
+			event.preventDefault();
+		},
+
+		drop(event) {
+			event.preventDefault();
+			var fromSlot = event.dataTransfer.getData("fromSlot");
+			var toSlot = this.itemSlot;
+
+			WS.publish({
+				destination: "/game/character.moveinventory",
+				body: JSON.stringify({
+					fromSlot: fromSlot,
+					toSlot: toSlot
+				})
+			});
+		},
+
+		drag(event) {
+			event.dataTransfer.setData("fromSlot", this.itemSlot);
 			this.hovering = false;
 		}
+
+
 	}
 }
 </script>

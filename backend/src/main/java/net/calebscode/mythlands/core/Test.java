@@ -34,6 +34,14 @@ public class Test implements CommandLineRunner {
 		}
 		
 		try {
+			var data = new HashMap<String, String>();
+			data.put("amount", "5");
+			gameService.createCombatAction("ManaPotion_Lesser", data, "RestorePlayerMana");
+		} catch (MythlandsServiceException e) {
+			
+		}
+		
+		try {
 			gameService.createConsumableItemTemplate(
 					"Lesser Healing Potion",
 					"/item/consumable/lesser_healing_potion.png",
@@ -46,11 +54,24 @@ public class Test implements CommandLineRunner {
 		}
 		
 		try {
+			gameService.createConsumableItemTemplate(
+					"Lesser Mana Potion",
+					"/item/consumable/lesser_mana_potion.png",
+					"A simple potion that restores 5 mana when used.",
+					ItemRarity.COMMON, 20, 
+					"ManaPotion_Lesser"
+			);
+		} catch (MythlandsServiceException e) {
+			
+		}
+		
+		try {
 			MythlandsCharacter hero = characterRepository.getById(1);
-			for(int i = 0; i < 20; i++) {
-				ItemInstanceDTO item = gameService.createItemInstance(1, 20);
-				gameService.addInventoryItem(hero.getId(), item.id);
-			}
+			ItemInstanceDTO healingPotion = gameService.createItemInstance(1, 7);
+			gameService.addInventoryItem(hero.getId(), healingPotion.id);
+
+			ItemInstanceDTO manaPotion = gameService.createItemInstance(2, 7);
+			gameService.addInventoryItem(hero.getId(), manaPotion.id);
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}

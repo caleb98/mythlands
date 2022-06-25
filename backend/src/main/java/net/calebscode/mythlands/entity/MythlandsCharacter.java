@@ -1,21 +1,26 @@
 package net.calebscode.mythlands.entity;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
-import javax.persistence.CascadeType;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
+import javax.persistence.MapKeyColumn;
 import javax.persistence.Table;
+
+import org.hibernate.annotations.Cascade;
+import org.hibernate.annotations.CascadeType;
 
 import net.calebscode.mythlands.core.StatValue;
 import net.calebscode.mythlands.core.item.ItemInstance;
@@ -45,9 +50,11 @@ public class MythlandsCharacter {
 	@JoinColumn(name = "owner_id")
 	private MythlandsUser owner;
 	
-	@OneToMany(cascade = CascadeType.ALL)
-	@JoinTable(inverseJoinColumns = @JoinColumn(name = "item_instance_id"))
-	private List<ItemInstance> inventory;
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(name = "character_inventory")
+	@MapKeyColumn(name = "inventory_slot")
+	@Cascade(CascadeType.ALL)
+	private Map<Integer, ItemInstance> inventory;
 	
 	@Column(nullable = false) 
 	private int inventoryCapacity = 100;
@@ -189,6 +196,8 @@ public class MythlandsCharacter {
 		
 		currentHealth = maxHealth.getValue();
 		currentMana = maxHealth.getValue();
+		
+		inventory = new HashMap<>();
 	}
 	
 	/********************************************************/
@@ -255,7 +264,7 @@ public class MythlandsCharacter {
 		inventoryCapacity = size;
 	}
 	
-	public List<ItemInstance> getInventory() {
+	public Map<Integer, ItemInstance> getInventory() {
 		return inventory;
 	}
 	
@@ -446,6 +455,18 @@ public class MythlandsCharacter {
 		return resistance;
 	}
 	
+	public StatValue getGoldGain() {
+		return goldGain;
+	}
+	
+	public StatValue getXpGain() {
+		return xpGain;
+	}
+	
+	public StatValue getAttackCooldown() {
+		return attackCooldown;
+	}
+	
 	public void recalculateMaxHealth() {
 		double currentPercent = currentHealth / maxHealth.getValue();
 		maxHealth.setBase(9 + (stamina.getValue() * level));
@@ -458,16 +479,20 @@ public class MythlandsCharacter {
 		currentMana = currentPercent * maxMana.getValue();
 	}
 	
-	public StatValue getGoldGain() {
-		return goldGain;
+	public int getFirstEmptyInventorySlot() {
+		for(int i = 0; i < inventoryCapacity; i++) {
+			if(!inventory.containsKey(i))
+				return i;
+		}
+		return -1;
 	}
 	
-	public StatValue getXpGain() {
-		return xpGain;
-	}
-	
-	public StatValue getAttackCooldown() {
-		return attackCooldown;
+	public boolean isInventoryFull() {
+		for(int i = 0; i < inventoryCapacity; i++) {
+			if(!inventory.containsKey(i))
+				return false;
+		}
+		return true;
 	}
 	
 }

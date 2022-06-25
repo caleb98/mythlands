@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.core.action.CombatAction;
@@ -42,6 +43,8 @@ public class MythlandsGameService {
 	@Autowired private MythlandsConsumableTemplateRepository consumableRepository;
 	@Autowired private MythlandsCombatActionRepository actionRepository;	
 	@Autowired private MythlandsCharacterRepository characterRepository;
+	
+	@Autowired private Gson gson;
 	
 	private HashMap<String, CombatActionFunction> functionMap = new HashMap<>();
 	
@@ -221,27 +224,102 @@ public class MythlandsGameService {
 		return updates;
 	}
 	
+	@Transactional
+	public JsonObject moveInventoryItem(int heroId, int fromSlot, int toSlot) throws MythlandsServiceException {
+		MythlandsCharacter hero = getCharacter(heroId);
+		ItemInstance fromItem = hero.getInventory().get(fromSlot);
+		ItemInstance toItem = hero.getInventory().get(toSlot);
+		
+		// If we're not moving an actual item, just don't do anything.
+		if(fromItem == null) {
+			return new JsonObject();
+		}
+		
+		// If there's not item in the slot we're moving to, just move.
+		if(toItem == null) {
+			hero.getInventory().remove(fromSlot);
+			hero.getInventory().put(toSlot, fromItem);
+		}
+		
+		// If we're moving stackable items, just move as many from
+		// the fromItem into the toItem as we can.
+		else if(fromItem.isStackable(toItem)) {
+
+			int stackSize = fromItem.getTemplate().getStackSize();
+			
+			// If adding the items would exceed the stack size, then only add
+			// as many as we need to reach the stack size, then update the
+			// fromItem count.
+			if(toItem.getCount() + fromItem.getCount() > stackSize) {
+				int toAdd = stackSize - toItem.getCount();
+				toItem.modifyCount(toAdd);
+				fromItem.modifyCount(-toAdd);
+			}
+			// Otherwise, add full count of fromItem to toItem stack,
+			// then delete the fromItem instance and clear that slot.
+			else {
+				toItem.modifyCount(fromItem.getCount());
+				hero.getInventory().remove(fromSlot);
+				itemRepository.delete(fromItem);
+			}
+			
+		}
+		
+		// Moving non-stackable items, so just swap them thangs
+		else {
+			hero.getInventory().remove(toSlot);
+			hero.getInventory().remove(fromSlot);
+			characterRepository.saveAndFlush(hero);
+			hero.getInventory().put(toSlot, fromItem);
+			hero.getInventory().put(fromSlot, toItem);
+		}
+		
+		// Indicate the new values in each slot
+		JsonObject changes = new JsonObject();
+		ItemInstance fromResult = hero.getInventory().get(fromSlot);
+		ItemInstance toResult = hero.getInventory().get(toSlot);
+		changes.add("" + fromSlot, gson.toJsonTree(fromResult == null ? null : new ItemInstanceDTO(fromResult)));
+		changes.add("" + toSlot, gson.toJsonTree(toResult == null ? null : new ItemInstanceDTO(toResult)));
+		return changes;
+		
+	}
+	
 	public void addInventoryItem(int heroId, String itemInstanceId) throws MythlandsServiceException {
 		addInventoryItem(heroId, UUID.fromString(itemInstanceId));
 	}
 	
+	/**
+	 * 
+	 * @param heroId
+	 * @param itemInstanceId
+	 * @return true if the item instance was added in its entirety; false if there is any item(s) remaining
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public void addInventoryItem(int heroId, UUID itemInstanceId) throws MythlandsServiceException {
+	public boolean addInventoryItem(int heroId, UUID itemInstanceId) throws MythlandsServiceException {
 		MythlandsCharacter hero = getCharacter(heroId);
 		ItemInstance add = getItemInstance(itemInstanceId);
 		
 		// Prevent adding same item multiple times
-		if(hero.getInventory().contains(add)) {
+		if(hero.getInventory().containsValue(add)) {
 			throw new MythlandsServiceException("Item already in inventory");
 		}
 		
 		// Check if the character's inventory contains any items which this one could stack with.
-		List<ItemInstance> stackable = hero.getInventory().stream()
+		List<ItemInstance> stackable = hero.getInventory().values().stream()
 				.filter(add::isStackable)
 				.collect(Collectors.toList());
 		
 		if(stackable.size() == 0) {
-			hero.getInventory().add(add);
+			// Item cannot be stacked, so try to add it to an empty slot in the inventory
+			int insertSlot = hero.getFirstEmptyInventorySlot();
+			if(insertSlot == -1) {
+				return false;
+			}
+			else {
+				hero.getInventory().put(insertSlot, add);
+				return true;
+			}
 		}
 		else {
 			
@@ -261,25 +339,36 @@ public class MythlandsGameService {
 				}
 			}
 			
-			// If no remaining items, delete this instance instead
+			// If no remaining items in this instance, delete this instance instead
 			if(remaining == 0) {
 				itemRepository.delete(add);
+				return true;
 			}
 			// Otherwise, adjust the item count in the stack and then add.
 			else {
 				add.setCount(remaining);
-				hero.getInventory().add(add);
+				int insertSlot = hero.getFirstEmptyInventorySlot();
+				if(insertSlot == -1) {
+					return false;
+				}
+				else {
+					hero.getInventory().put(insertSlot, add);
+					return true;
+				}
 			}
 			
 		}
 		
 	}
 	
-	public List<ItemInstanceDTO> getInventory(int heroId) throws MythlandsServiceException {
+	public Map<Integer, ItemInstanceDTO> getInventory(int heroId) throws MythlandsServiceException {
 		MythlandsCharacter hero = getCharacter(heroId);
-		return hero.getInventory().stream()
-				.map(ItemInstanceDTO::new)
-				.collect(Collectors.toList());
+		Map<Integer, ItemInstance> inventory = hero.getInventory();
+		return inventory.keySet().stream()
+				.collect(Collectors.toMap(
+						slot -> slot, 
+						slot -> new ItemInstanceDTO(inventory.get(slot))
+				));
 	}
 	
 	public boolean isDeceased(int heroId) throws MythlandsServiceException {

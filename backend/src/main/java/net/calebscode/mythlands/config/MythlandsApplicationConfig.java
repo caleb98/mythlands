@@ -13,7 +13,9 @@ public class MythlandsApplicationConfig {
 	
 	@Bean
 	public Gson applicationDefaultGson() {
-		return new GsonBuilder().create();
+		return new GsonBuilder()
+				.serializeNulls()
+				.create();
 	}
 	
 	@Bean

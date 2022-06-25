@@ -12,6 +12,7 @@ public class MythlandsCharacterDTO {
 	public final int level;
 	public final int xp;
 	public final boolean isDeceased;
+	public final int inventoryCapacity;
 	
 	public final int skillPoints;
 	public final long attackReady;
@@ -43,6 +44,7 @@ public class MythlandsCharacterDTO {
 		level = hc.getLevel();
 		xp = hc.getXp();
 		isDeceased = hc.isDeceased();
+		inventoryCapacity = hc.getInventoryCapacity();
 		
 		skillPoints = hc.getSkillPoints();
 		attackReady = hc.getAttackReady();

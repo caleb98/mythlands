@@ -18,6 +18,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 		gameService.registerCombatActionFunction("HealPlayer", this::healPlayer);
+		gameService.registerCombatActionFunction("RestorePlayerMana", this::restorePlayerMana);
 	}
 	
 	/**
@@ -30,6 +31,14 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	private void healPlayer(int heroId, Boss boss, Map<String, String> data) {
 		try {
 			gameService.gainHealth(heroId, Double.parseDouble(data.get(("amount"))));
+		} catch (MythlandsServiceException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void restorePlayerMana(int heroId, Boss boss, Map<String, String> data) {
+		try {
+			gameService.gainMana(heroId, Double.parseDouble(data.get(("amount"))));
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}
