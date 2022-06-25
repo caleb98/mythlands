@@ -30,10 +30,12 @@
 				</div>
 				<i class="username">{{userInfo.username}}</i>
 			</div>
+
+			<!-- Stats & Image -->
 			<div class="row mb-3 align-items-center mx-0">
 				<div class="col-4 p-0">
 					<div class="mb-2"><b>Level {{activeCharacter.level}}</b></div>
-					<img src="../assets/hero.png" width="64" height="64" class="pixel-image">
+					<img src="/img/hero.png" width="64" height="64" class="pixel-image">
 				</div>
 				<div class="col-8 p-0">
 					<table class="table align-middle stats-table mb-0 clean-text">
@@ -99,7 +101,9 @@
 					</table>
 				</div>
 			</div>
-			<div class="row" v-if="activeCharacter != null">
+
+			<!-- Bars -->
+			<div class="row">
 				<div class="col-12">
 					<div class="progress resource-bar border-health mb-1">
 						<div class="progress-bar progress-bar-striped bg-health" 
@@ -121,6 +125,13 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Inventory -->
+			<div class="row inventory-frame mx-0 mt-2">
+				<div class="col-auto p-0" v-for="itemInstance in activeCharacterInventory" :key="itemInstance.id">
+					<ItemIconComponent :displayItem="itemInstance"/>
+				</div>
+			</div>
 		</div>
 		<div class="container-fluid framed p-2">
 			<div class="row">
@@ -140,16 +151,19 @@ import { map } from 'rxjs/operators'
 import $ from 'jquery';
 import WS from '../services/wsclient';
 import CharacterCreationComponent from './CharacterCreationComponent.vue';
+import ItemIconComponent from './ItemIconComponent.vue';
 
 export default {
 	name: 'PlayerDashboard',
 	components: {
-		CharacterCreationComponent
+		CharacterCreationComponent,
+		ItemIconComponent
 	},
 	data() {
 		return {
 			characters: [],
 			activeCharacterId: -1,
+			activeCharacterInventory: [],
 			userInfo: null,
 			cooldownTime: 0,
 			showCharacterCreator: false,
@@ -188,6 +202,18 @@ export default {
 				}
 
 				self.userInfo = data.data;
+			});
+		},
+
+		loadInventory() {
+			const self = this;
+			$.get("/character/inventory", function(data) {
+				if(data.isError) {
+					console.log("Error retrieving character inventory: " + data.message);
+					return;
+				}
+
+				self.activeCharacterInventory = data.data;
 			});
 		},
 
@@ -297,6 +323,7 @@ export default {
 	mounted() {
 		this.loadUserInfo();
 		this.loadUserCharacters();
+		this.loadInventory();
 
 		this.characterStatusSub = WS.watch("/user/local/character")
 			.pipe(map(message => {
@@ -314,6 +341,8 @@ export default {
 			.subscribe(body => {
 				this.cooldownTime = body.attackCooldown;
 			});
+
+		// TODO: inventory sub
 	},
 
 	unmounted() {
@@ -416,10 +445,6 @@ export default {
 	to { width: 0%; }
 }
 
-.stats-table {
-
-}
-
 .stats-table td {
 	border-bottom-width: 0px;
 	padding: 2px 4px 2px 4px;
@@ -457,6 +482,15 @@ export default {
 	border-radius: 5px;
 	backdrop-filter: blur(2px) grayscale(100%);
 	background-color: rgba(255, 0, 0, 0.30);
+}
+
+.inventory-frame {
+	border: 1px solid black;
+	border-radius: 5px;
+	box-shadow: 1px 1px 1px black;
+	background-color: #977749;
+	height: 200px;
+	overflow-y: scroll;
 }
 
 </style>

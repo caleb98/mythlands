@@ -34,15 +34,22 @@ public class Test implements CommandLineRunner {
 		}
 		
 		try {
-			gameService.createConsumableItemTemplate("Lesser Healing Potion", null, ItemRarity.COMMON, 20, "HealingPotion_Lesser");
+			gameService.createConsumableItemTemplate(
+					"Lesser Healing Potion", 
+					"/item/consumable/lesser_healing_potion.png", 
+					ItemRarity.COMMON, 20, 
+					"HealingPotion_Lesser"
+			);
 		} catch (MythlandsServiceException e) {
 			//e.printStackTrace();
 		}
 		
 		try {
 			MythlandsCharacter hero = characterRepository.getById(1);
-			ItemInstanceDTO item = gameService.createItemInstance(1, 7);
-			gameService.addInventoryItem(hero.getId(), item.id);
+			for(int i = 0; i < 20; i++) {
+				ItemInstanceDTO item = gameService.createItemInstance(1, 20);
+				gameService.addInventoryItem(hero.getId(), item.id);
+			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}

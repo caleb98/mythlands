@@ -1,0 +1,34 @@
+<template>
+	<div class="item-icon-container p-2 m-2">
+		<img :src="'/img' + displayItem.template.icon" class="item-icon-image">
+	</div>
+</template>
+
+<script>
+export default {
+	name: 'ItemIconComponent',
+	props: {
+		displayItem: Object
+	}
+}
+</script>
+
+<style scoped>
+.item-icon-container {
+	border: 1px solid black;
+	border-radius: 3px;
+	background-color: #bb9255;
+	box-shadow: 1px 1px 5px #0000006b inset;
+}
+
+.item-icon-container:hover {
+	border-color: #dda847;
+}
+
+.item-icon-image {
+	width: 32px;
+	height: 32px;
+	image-rendering: pixelated;
+	image-rendering: crisp-edges;
+}
+</style>
