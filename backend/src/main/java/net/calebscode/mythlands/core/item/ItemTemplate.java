@@ -33,6 +33,9 @@ public class ItemTemplate {
 	@Column
 	private String icon;
 	
+	@Column
+	private String description;
+	
 	@Column(nullable = false)
 	private int stackSize;
 	
@@ -41,13 +44,10 @@ public class ItemTemplate {
 	
 	protected ItemTemplate() {}
 	
-	public ItemTemplate(String name, ItemRarity rarity, int stackSize) {
-		this(name, null, rarity, stackSize);
-	}
-	
-	public ItemTemplate(String name, String icon, ItemRarity rarity, int stackSize) {
+	public ItemTemplate(String name, String icon, String description, ItemRarity rarity, int stackSize) {
 		this.name = name;
 		this.icon = icon;
+		this.description = description;
 		this.rarity = rarity;
 		this.stackSize = stackSize;
 	}
@@ -68,6 +68,14 @@ public class ItemTemplate {
 		this.icon = icon;
 	}
 
+	public String getDescription() {
+		return description;
+	}
+	
+	public void setDescription(String description) {
+		this.description = description;
+	}
+	
 	public int getStackSize() {
 		return stackSize;
 	}

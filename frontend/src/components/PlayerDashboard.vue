@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div class="container-fluid p-2 framed mb-2" style="position: relative;" v-if="activeCharacter != null">
+		<div class="container-fluid p-2 framed mb-2" v-if="activeCharacter != null">
 			<div class="row">
 				<div class="col">
 					<button type="button" class="btn btn-danger" @click="attack()" :disabled="cooldownTime > 0 || isCharacterDeceased">Attack</button>
@@ -15,7 +15,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="container-fluid pt-3 pb-3 framed mb-2" style="position: relative;" v-if="activeCharacter != null">
+		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="activeCharacter != null">
 			<div id="death-overlay" class="container-fluid" v-if="activeCharacter.isDeceased">
 				<div class="row justify-content-center align-items-center" style="height: 100%">
 					<div class="col">
@@ -128,8 +128,12 @@
 
 			<!-- Inventory -->
 			<div class="row inventory-frame mx-0 mt-2">
-				<div class="col-auto p-0" v-for="itemInstance in activeCharacterInventory" :key="itemInstance.id">
-					<ItemIconComponent :displayItem="itemInstance"/>
+				<div class="col-12">
+					<div class="row">
+						<div class="col-auto p-0" v-for="itemInstance in activeCharacterInventory" :key="itemInstance.id">
+							<ItemIconComponent :displayItem="itemInstance"/>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -490,7 +494,7 @@ export default {
 	box-shadow: 1px 1px 1px black;
 	background-color: #977749;
 	height: 200px;
-	overflow-y: scroll;
+	overflow-y: auto;
 }
 
 </style>

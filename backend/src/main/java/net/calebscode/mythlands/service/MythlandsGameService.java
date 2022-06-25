@@ -335,12 +335,12 @@ public class MythlandsGameService {
 	/********************************************************/
 	
 	@Transactional
-	public ConsumableItemTemplateDTO createConsumableItemTemplate(String name, String icon, ItemRarity rarity, int stackSize, String actionId) 
+	public ConsumableItemTemplateDTO createConsumableItemTemplate(String name, String icon, String desc, ItemRarity rarity, int stackSize, String actionId) 
 			throws MythlandsServiceException {
 	
 		// Check if an identical template already exists.
-		var existing = consumableRepository.findByNameAndIconAndStackSizeAndRarityAndOnConsumeId(
-				name, icon, stackSize, rarity, actionId
+		var existing = consumableRepository.findByNameAndIconAndDescriptionAndStackSizeAndRarityAndOnConsumeId(
+				name, icon, desc, stackSize, rarity, actionId
 		);
 		
 		if(existing.size() > 0) {
@@ -348,7 +348,7 @@ public class MythlandsGameService {
 		}
 		
 		var action = getCombatAction(actionId);
-		ConsumableItemTemplate template = new ConsumableItemTemplate(name, icon, rarity, stackSize, action);
+		ConsumableItemTemplate template = new ConsumableItemTemplate(name, icon, desc, rarity, stackSize, action);
 		templateRepository.save(template);
 		
 		return new ConsumableItemTemplateDTO(template);

@@ -10,7 +10,7 @@ import net.calebscode.mythlands.core.item.ItemRarity;
 @Repository
 public interface MythlandsConsumableTemplateRepository extends MythlandsItemTemplateRepository<ConsumableItemTemplate> {
 
-	public List<ConsumableItemTemplate> findByNameAndIconAndStackSizeAndRarityAndOnConsumeId(
-			String name, String icon, int stackSize, ItemRarity rarity, String onConsumeId);
+	public List<ConsumableItemTemplate> findByNameAndIconAndDescriptionAndStackSizeAndRarityAndOnConsumeId(
+			String name, String icon, String description, int stackSize, ItemRarity rarity, String onConsumeId);
 	
 }

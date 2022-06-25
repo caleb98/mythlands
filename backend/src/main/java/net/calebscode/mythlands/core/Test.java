@@ -35,8 +35,9 @@ public class Test implements CommandLineRunner {
 		
 		try {
 			gameService.createConsumableItemTemplate(
-					"Lesser Healing Potion", 
-					"/item/consumable/lesser_healing_potion.png", 
+					"Lesser Healing Potion",
+					"/item/consumable/lesser_healing_potion.png",
+					"A simple potion that restores 5 health when used.",
 					ItemRarity.COMMON, 20, 
 					"HealingPotion_Lesser"
 			);
