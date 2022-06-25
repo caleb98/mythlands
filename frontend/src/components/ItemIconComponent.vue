@@ -39,5 +39,6 @@ export default {
 	bottom: 0%;
 	right: 5%;
 	color: yellow;
+	user-select: none;
 }
 </style>
