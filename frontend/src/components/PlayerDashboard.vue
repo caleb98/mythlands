@@ -506,4 +506,21 @@ export default {
 	overflow-y: auto;
 }
 
+.inventory-frame::-webkit-scrollbar {
+	width: 10px;
+}
+
+.inventory-frame::-webkit-scrollbar-track {
+	background: #00000000;
+}
+
+.inventory-frame::-webkit-scrollbar-thumb {
+	transition: background 2s ease-in-out;
+	background: #c7a679;
+	border-radius: 5px;
+}
+
+.inventory-frame::-webkit-scrollbar-thumb:hover {
+	background: #ac9069;
+}
 </style>
