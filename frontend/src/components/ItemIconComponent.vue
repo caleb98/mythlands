@@ -15,11 +15,13 @@
 			</div>
 		</div>
 
-		<ItemTooltip v-if="hovering && displayItem" 
-			:itemInstance="displayItem" 
-			:maxWidth="300" 
-			:xPos="tooltipX"
-			:yPos="tooltipY"/>
+		<div :id="'item-tooltip-slot-' + itemSlot">
+			<ItemTooltip v-if="hovering && displayItem"
+				:itemInstance="displayItem" 
+				:maxWidth="300" 
+				:xPos="tooltipX"
+				:yPos="tooltipY"/>
+		</div>
 	</div>
 </template>
 
@@ -85,14 +87,20 @@ export default {
 			if(this.displayItem) {
 				this.hovering = true;
 				let element = $("#" + this.elementId);
-				this.tooltipX = element.offset().left+ element.outerWidth();
+				this.tooltipX = element.offset().left + element.outerWidth() ;
 				this.tooltipY = element.offset().top + element.outerHeight();
+
+				// Move the item tooltip to the page body
+				$("#item-tooltip-slot-" + this.itemSlot).appendTo($("body"));
 			}
 		},
 
 		hoverEnd() {
 			if(this.displayItem) {
 				this.hovering = false;
+
+				// Move the item tooltip back into this element.
+				$("#item-tooltip-slot-" + this.itemSlot).appendTo($("#" + this.elementId));
 			}
 		},
 
@@ -118,7 +126,6 @@ export default {
 			event.dataTransfer.setData("fromSlot", this.itemSlot);
 			this.hovering = false;
 		}
-
 
 	}
 }

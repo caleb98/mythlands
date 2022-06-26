@@ -20,7 +20,7 @@
 		</div>
 
 		<!-- Active Character Display -->
-		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="activeCharacter != null">
+		<div class="container-fluid pt-3 pb-3 framed mb-2 position-relative" v-if="activeCharacter != null">
 
 			<!-- Death Overlay -->
 			<div id="death-overlay" class="container-fluid" v-if="activeCharacter.isDeceased">

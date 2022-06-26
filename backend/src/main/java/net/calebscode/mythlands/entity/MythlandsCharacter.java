@@ -50,7 +50,7 @@ public class MythlandsCharacter {
 	@JoinColumn(name = "owner_id")
 	private MythlandsUser owner;
 	
-	@ElementCollection(fetch = FetchType.EAGER)
+	@ElementCollection
 	@CollectionTable(name = "character_inventory")
 	@MapKeyColumn(name = "inventory_slot")
 	@Cascade(CascadeType.ALL)
