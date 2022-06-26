@@ -14,6 +14,10 @@ public class MythlandsCharacterDTO {
 	public final boolean isDeceased;
 	public final int inventoryCapacity;
 	
+	public final ItemInstanceDTO weaponItem;
+	public final ItemInstanceDTO armorItem;
+	public final ItemInstanceDTO trinketItem;
+	
 	public final int skillPoints;
 	public final long attackReady;
 	
@@ -45,6 +49,10 @@ public class MythlandsCharacterDTO {
 		xp = hc.getXp();
 		isDeceased = hc.isDeceased();
 		inventoryCapacity = hc.getInventoryCapacity();
+		
+		weaponItem = hc.hasWeaponItem() ? new ItemInstanceDTO(hc.getWeaponItem()) : null;
+		armorItem = hc.hasArmorItem() ? new ItemInstanceDTO(hc.getArmorItem()) : null;
+		trinketItem = hc.hasTrinketItem() ? new ItemInstanceDTO(hc.getTrinketItem()) : null;
 		
 		skillPoints = hc.getSkillPoints();
 		attackReady = hc.getAttackReady();

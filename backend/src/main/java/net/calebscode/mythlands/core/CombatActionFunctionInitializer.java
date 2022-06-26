@@ -5,15 +5,23 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
+import net.calebscode.mythlands.core.action.CombatContext;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
+import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.service.MythlandsGameService;
 
 @Component
 public class CombatActionFunctionInitializer implements ApplicationRunner {
 
 	@Autowired private MythlandsGameService gameService;
+	@Autowired private SimpMessagingTemplate messenger;
+	@Autowired private Gson gson;
 	
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -28,17 +36,25 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param boss
 	 * @param data
 	 */
-	private void healPlayer(int heroId, Boss boss, Map<String, String> data) {
+	private void healPlayer(CombatContext context, Map<String, String> data) {
 		try {
-			gameService.gainHealth(heroId, Double.parseDouble(data.get(("amount"))));
+			JsonObject update = gameService.gainHealth(context.heroId, Double.parseDouble(data.get(("amount"))));
+			if(update.size() > 0) {
+				messenger.convertAndSendToUser(context.username, "/local/character", 
+						gson.toJson(new CharacterUpdateMessage(update)));
+			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}
 	}
 	
-	private void restorePlayerMana(int heroId, Boss boss, Map<String, String> data) {
+	private void restorePlayerMana(CombatContext context, Map<String, String> data) {
 		try {
-			gameService.gainMana(heroId, Double.parseDouble(data.get(("amount"))));
+			JsonObject update = gameService.gainMana(context.heroId, Double.parseDouble(data.get(("amount"))));
+			if(update.size() > 0) {
+				messenger.convertAndSendToUser(context.username, "/local/character", 
+						gson.toJson(new CharacterUpdateMessage(update)));
+			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}

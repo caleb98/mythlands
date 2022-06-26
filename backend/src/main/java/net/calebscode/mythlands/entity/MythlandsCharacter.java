@@ -10,19 +10,21 @@ import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapKeyColumn;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CascadeType;
 
 import net.calebscode.mythlands.core.StatValue;
+import net.calebscode.mythlands.core.item.EquippableItemSlot;
+import net.calebscode.mythlands.core.item.EquippableItemTemplate;
 import net.calebscode.mythlands.core.item.ItemInstance;
 
 @Entity
@@ -58,6 +60,13 @@ public class MythlandsCharacter {
 	
 	@Column(nullable = false) 
 	private int inventoryCapacity = 100;
+	
+	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
+	private ItemInstance weaponItem;
+	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
+	private ItemInstance armorItem;
+	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
+	private ItemInstance trinketItem;
 	
 	/********************************************************/
 	/*                     Core Stats                       */
@@ -258,6 +267,75 @@ public class MythlandsCharacter {
 	
 	public int getInventoryCapacity() {
 		return inventoryCapacity;
+	}
+	
+	public ItemInstance getArmorItem() {
+		return armorItem;
+	}
+	
+	public void setArmorItem(ItemInstance armor) {
+		if(armor != null) {
+			if(!(armor.getTemplate() instanceof EquippableItemTemplate)) {
+				throw new IllegalArgumentException("Armor equip item must be an equippable item type.");
+			}
+			
+			var template = (EquippableItemTemplate) armor.getTemplate();
+			if(template.getSlot() != EquippableItemSlot.ARMOR) {
+				throw new IllegalArgumentException("Armor equip must have slot type ARMOR.");
+			}
+		}
+		
+		armorItem = armor;
+	}
+	
+	public boolean hasArmorItem() {
+		return armorItem != null;
+	}
+	
+	public ItemInstance getTrinketItem() {
+		return trinketItem;
+	}
+	
+	public void setTrinketItem(ItemInstance trinket) {
+		if(trinket != null) {
+			if(!(trinket.getTemplate() instanceof EquippableItemTemplate)) {
+				throw new IllegalArgumentException("Trinket equip item must be an equippable item type.");
+			}
+			
+			var template = (EquippableItemTemplate) trinket.getTemplate();
+			if(template.getSlot() != EquippableItemSlot.TRINKET) {
+				throw new IllegalArgumentException("Trinket equip must have slot type TRINKET.");
+			}
+		}
+		
+		trinketItem = trinket;
+	}
+	
+	public boolean hasTrinketItem() {
+		return trinketItem != null;
+	}
+	
+	public ItemInstance getWeaponItem() {
+		return weaponItem;
+	}
+	
+	public void setWeaponItem(ItemInstance weapon) {
+		if(weapon != null) {
+			if(!(weapon.getTemplate() instanceof EquippableItemTemplate)) {
+				throw new IllegalArgumentException("Weapon equip item must be an equippable item type.");
+			}
+			
+			var template = (EquippableItemTemplate) weapon.getTemplate();
+			if(template.getSlot() != EquippableItemSlot.WEAPON) {
+				throw new IllegalArgumentException("Weapon equip must have slot type WEAPON.");
+			}
+		}
+		
+		weaponItem = weapon;
+	}
+	
+	public boolean hasWeaponItem() {
+		return weaponItem != null;
 	}
 	
 	public void setInventorySize(int size) {
@@ -493,6 +571,18 @@ public class MythlandsCharacter {
 				return false;
 		}
 		return true;
+	}
+	
+	public ItemInstance getEquipped(EquippableItemSlot slot) {
+		switch(slot) {
+		
+		case ARMOR:		return armorItem;
+		case TRINKET:	return trinketItem;
+		case WEAPON:	return weaponItem;
+		
+		default:		return null;
+		
+		}
 	}
 	
 }

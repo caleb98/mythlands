@@ -41,12 +41,29 @@
 			</div>
 
 			<!-- Stats & Image -->
-			<div class="row mb-3 align-items-center mx-0">
-				<div class="col-4 p-0">
+			<div class="row mb-3 mx-0 align-items-center justify-content-evenly">
+				<div class="col-auto p-0">
+					<div class="row">
+						<div class="col-auto">
+							<ItemIconComponent :displayItem="activeCharacter.weaponItem" itemSlot="weapon-item" />
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-auto">
+							<ItemIconComponent :displayItem="activeCharacter.armorItem" itemSlot="armor-item" />
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-auto">
+							<ItemIconComponent :displayItem="activeCharacter.trinketItem" itemSlot="trinket-item" />
+						</div>
+					</div>
+				</div>
+				<div class="col-auto p-0">
 					<div class="mb-2"><b>Level {{activeCharacter.level}}</b></div>
 					<img src="/img/hero.png" width="64" height="64" class="pixel-image">
 				</div>
-				<div class="col-8 p-0">
+				<div class="col-auto p-0">
 					<table class="table align-middle stats-table mb-0 clean-text">
 						<tbody>
 							<tr>
@@ -140,7 +157,7 @@
 				<div class="col-12">
 					<div class="row">
 						<div class="col-auto p-0" v-for="(n, slot) in activeCharacter.inventoryCapacity" :key="slot">
-							<ItemIconComponent :displayItem="activeCharacterInventory[slot]" :itemSlot="slot"/>
+							<ItemIconComponent :displayItem="activeCharacterInventory[slot]" :itemSlot="'' + slot"/>
 						</div>
 					</div>
 				</div>
@@ -366,7 +383,16 @@ export default {
 			}))
 			.subscribe(changes => {
 				for(var slot in changes) {
-					if(changes[slot] == null) {
+					if(slot == "WEAPON") {
+						this.activeCharacter.weaponItem = changes[slot];
+					}
+					else if(slot == "ARMOR") {
+						this.activeCharacter.armorItem = changes[slot];
+					}
+					else if(slot == "TRINKET") {
+						this.activeCharacter.trinketItem = changes[slot];
+					}
+					else if(changes[slot] == null) {
 						delete this.activeCharacterInventory[slot];
 					}
 					else {

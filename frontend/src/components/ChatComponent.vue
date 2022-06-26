@@ -81,12 +81,15 @@ export default {
             });
             this.messageText = "";
         },
+		
         getScrollPercentage() {
             return 100 * $("#chat-frame").scrollTop() / ($("#chat-container").height() - $("#chat-frame").height());
         },
+
         hasScrollBar(element) {
             return element.get(0).scrollHeight > element.height();
         },
+
         messageRightClickHandler(event, element) {
             var message = $(element);
 			this.selectedMessageId = message.data("messageId");

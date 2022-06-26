@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import net.calebscode.mythlands.core.item.ItemTemplate;
 
 @Repository
-public interface MythlandsItemTemplateRepository<T extends ItemTemplate> extends JpaRepository<T, Integer> {
+public interface MythlandsItemTemplateRepository<T extends ItemTemplate> extends JpaRepository<T, String> {
 
 	public List<ItemTemplate> findByName(String name);
 	

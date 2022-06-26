@@ -117,10 +117,12 @@ public class MythlandsUserService implements UserDetailsService {
 		userRepository.save(user);
 	}
 	
+	@Transactional
 	public MythlandsUserDTO getUserInfo(String username) throws MythlandsServiceException {
 		return new MythlandsUserDTO(getUser(username));
 	}
 	
+	@Transactional
 	public MythlandsCharacterDTO getActiveCharacter(String username) throws MythlandsServiceException {
 		MythlandsUser user = getUser(username);
 		MythlandsCharacter hero = user.getActiveCharacter();
@@ -130,6 +132,7 @@ public class MythlandsUserService implements UserDetailsService {
 		return new MythlandsCharacterDTO(hero);
 	}
 	
+	@Transactional
 	public CharacterListMessage getCharacterList(String username) throws MythlandsServiceException {
 		MythlandsUser user = getUser(username);
 		

@@ -37,7 +37,7 @@ export default {
 	},
 	props: {
 		displayItem: Object,
-		itemSlot: Number
+		itemSlot: String
 	},
 
 	data() {
@@ -111,19 +111,60 @@ export default {
 		drop(event) {
 			event.preventDefault();
 			var fromSlot = event.dataTransfer.getData("fromSlot");
+			var fromItem = event.dataTransfer.getData("fromItem");
 			var toSlot = this.itemSlot;
+			var toItem = this.displayItem;
 
-			WS.publish({
-				destination: "/game/character.moveinventory",
-				body: JSON.stringify({
-					fromSlot: fromSlot,
-					toSlot: toSlot
-				})
-			});
+			// Ignore moving empty item
+			if(fromItem == "null") return;
+
+			// Choose the appropriate way to handle the drag and drop
+			// depending on the type of slots we used.
+			if(this.includesEquipSlot(fromSlot, toSlot)) {
+
+				let equipSlot, invSlot;
+
+				// Do nothing if we're trying to move items between slots
+				// (This wont ever work because items can only be equipped to one slot.)
+				if(isNaN(fromSlot) && isNaN(toSlot)) {
+					return;
+				}
+				// Moving an item from an equip slot to an inventory slot
+				else if(isNaN(fromSlot)) {
+					equipSlot = this.getEquipSlot(fromSlot);
+					invSlot = toSlot;
+				}
+				// Moving an item from an inventory slot to an equip slot
+				else {
+					equipSlot = this.getEquipSlot(toSlot);
+					invSlot = fromSlot;
+				}
+
+				WS.publish({
+					destination: "/game/character.equip",
+					body: JSON.stringify({
+						equipSlot: equipSlot,
+						invSlot: invSlot
+					})
+				});
+
+			}
+			else {
+
+				WS.publish({
+					destination: "/game/character.moveinventory",
+					body: JSON.stringify({
+						fromSlot: fromSlot,
+						toSlot: toSlot
+					})
+				});
+				
+			}
 		},
 
 		drag(event) {
 			event.dataTransfer.setData("fromSlot", this.itemSlot);
+			event.dataTransfer.setData("fromItem", this.displayItem ? this.displayItem : null);
 			this.hovering = false;
 		},
 
@@ -139,6 +180,20 @@ export default {
 
 			event.preventDefault();
 			return false;
+		},
+
+		includesEquipSlot(fromSlot, toSlot) {
+			return fromSlot == "weapon-item" || fromSlot == "armor-item" || fromSlot == "trinket-item"
+					|| toSlot == "weapon-item" || toSlot == "armor-item" || toSlot == "trinket-item"
+		},
+
+		getEquipSlot(slot) {
+			switch(slot) {
+				case "weapon-item": return "WEAPON";
+				case "armor-item": return "ARMOR";
+				case "trinket-item": return "TRINKET";
+				default: return null;
+			}
 		}
 
 	}

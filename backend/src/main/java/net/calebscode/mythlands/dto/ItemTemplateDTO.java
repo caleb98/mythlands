@@ -5,7 +5,7 @@ import net.calebscode.mythlands.core.item.ItemTemplate;
 
 public class ItemTemplateDTO {
 
-	public final int id;
+	public final String id;
 	public final String name;
 	public final String icon;
 	public final String description;

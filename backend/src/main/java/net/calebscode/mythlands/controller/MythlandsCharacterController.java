@@ -17,6 +17,7 @@ import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.dto.ItemInstanceDTO;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
+import net.calebscode.mythlands.messages.in.EquipMessage;
 import net.calebscode.mythlands.messages.in.MoveInventoryMessage;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
 import net.calebscode.mythlands.messages.in.UseInventoryMessage;
@@ -103,10 +104,24 @@ public class MythlandsCharacterController {
 	public void useInventorySlot(UseInventoryMessage use, Principal principal) {
 		try {
 			var active = userService.getActiveCharacter(principal.getName());
-			var changes = gameService.useInventoryItem(active.id, use.useSlot);
+			var changes = gameService.useInventoryItem(principal.getName(), active.id, use.useSlot);
 			if(changes.size() > 0) {
 				messenger.convertAndSendToUser(principal.getName(), "/local/inventory", 
 						gson.toJson(changes));
+			}
+		} catch (MythlandsServiceException e) {
+			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));
+		}
+	}
+	
+	@MessageMapping("/character.equip")
+	public void equipItem(EquipMessage equip, Principal principal) {
+		try {
+			var active = userService.getActiveCharacter(principal.getName());
+			var changes = gameService.equipItem(active.id, equip.equipSlot, equip.invSlot);
+			if(changes.size() > 0) {
+				messenger.convertAndSendToUser(principal.getName(), "/local/inventory", 
+						gson.toJson(changes));	
 			}
 		} catch (MythlandsServiceException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));

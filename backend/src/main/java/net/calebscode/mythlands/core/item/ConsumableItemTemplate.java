@@ -15,8 +15,8 @@ public class ConsumableItemTemplate extends ItemTemplate {
 	
 	protected ConsumableItemTemplate() {}
 	
-	public ConsumableItemTemplate(String name, String icon, String desc, ItemRarity rarity, int stackSize, CombatAction onConsume) {
-		super(name, icon, desc, rarity, stackSize);
+	public ConsumableItemTemplate(String id, String name, String icon, String desc, ItemRarity rarity, int stackSize, CombatAction onConsume) {
+		super(id, name, icon, desc, rarity, stackSize);
 		this.onConsume = onConsume;
 	}
 	

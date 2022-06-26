@@ -32,7 +32,7 @@
 
 			<!-- Leaderboard -->
 			<div class="col-12 col-lg-6 mb-2">
-				<Leaderboard page-size="10"/>
+				<Leaderboard :page-size="10"/>
 			</div>
 
 			<!-- System Messages -->

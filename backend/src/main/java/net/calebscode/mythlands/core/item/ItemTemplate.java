@@ -9,8 +9,6 @@ import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
@@ -24,8 +22,7 @@ import javax.persistence.Table;
 public class ItemTemplate {
 
 	@Id
-	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	private int id;
+	private String id;
 	
 	@Column(nullable = false)
 	private String name;
@@ -44,7 +41,8 @@ public class ItemTemplate {
 	
 	protected ItemTemplate() {}
 	
-	public ItemTemplate(String name, String icon, String description, ItemRarity rarity, int stackSize) {
+	public ItemTemplate(String id, String name, String icon, String description, ItemRarity rarity, int stackSize) {
+		this.id = id;
 		this.name = name;
 		this.icon = icon;
 		this.description = description;
@@ -92,7 +90,7 @@ public class ItemTemplate {
 		this.rarity = rarity;
 	}
 
-	public int getId() {
+	public String getId() {
 		return id;
 	}
 

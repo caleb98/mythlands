@@ -1,5 +1,6 @@
 package net.calebscode.mythlands.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,20 +19,26 @@ import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.core.action.CombatAction;
 import net.calebscode.mythlands.core.action.CombatActionFunction;
+import net.calebscode.mythlands.core.action.CombatContext;
 import net.calebscode.mythlands.core.item.ConsumableItemTemplate;
+import net.calebscode.mythlands.core.item.EquippableItemSlot;
+import net.calebscode.mythlands.core.item.EquippableItemTemplate;
+import net.calebscode.mythlands.core.item.ItemAffix;
+import net.calebscode.mythlands.core.item.ItemAffixDTO;
 import net.calebscode.mythlands.core.item.ItemInstance;
 import net.calebscode.mythlands.core.item.ItemRarity;
 import net.calebscode.mythlands.core.item.ItemTemplate;
 import net.calebscode.mythlands.dto.CombatActionDTO;
 import net.calebscode.mythlands.dto.ConsumableItemTemplateDTO;
+import net.calebscode.mythlands.dto.EquippableItemTemplateDTO;
 import net.calebscode.mythlands.dto.ItemInstanceDTO;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
+import net.calebscode.mythlands.repository.MythlandsAffixRepository;
 import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
 import net.calebscode.mythlands.repository.MythlandsCombatActionRepository;
-import net.calebscode.mythlands.repository.MythlandsConsumableTemplateRepository;
 import net.calebscode.mythlands.repository.MythlandsItemRepository;
 import net.calebscode.mythlands.repository.MythlandsItemTemplateRepository;
 
@@ -40,9 +47,9 @@ public class MythlandsGameService {
 
 	@Autowired private MythlandsItemRepository itemRepository;
 	@Autowired private MythlandsItemTemplateRepository<ItemTemplate> templateRepository;
-	@Autowired private MythlandsConsumableTemplateRepository consumableRepository;
 	@Autowired private MythlandsCombatActionRepository actionRepository;	
-	@Autowired private MythlandsCharacterRepository characterRepository;
+	@Autowired private MythlandsCharacterRepository characterRepository;	
+	@Autowired private MythlandsAffixRepository affixRepository;
 	
 	@Autowired private Gson gson;
 	
@@ -239,7 +246,64 @@ public class MythlandsGameService {
 	/********************************************************/
 	
 	@Transactional
-	public JsonObject useInventoryItem(int heroId, int useSlot) throws MythlandsServiceException {
+	public JsonObject equipItem(int heroId, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
+		MythlandsCharacter hero = getCharacter(heroId);
+		
+		// Get the items that we will be swapping
+		ItemInstance equip = hero.getInventory().get(invSlot);
+		ItemInstance dequip = hero.getEquipped(equipSlot);
+
+		// Make sure item is equippable (if we're even equipping anything)
+		if(equip != null) {
+			if(!(equip.getTemplate() instanceof EquippableItemTemplate)) {
+				throw new MythlandsServiceException("Cannot equip non-equippable item.");
+			}
+			
+			// Make sure item slot matches
+			var template = (EquippableItemTemplate) equip.getTemplate();
+			if(template.getSlot() != equipSlot) {
+				throw new MythlandsServiceException("Cannot equip " + template.getSlot() + " to " + equipSlot + " slot.");
+			}
+		}
+		
+		// Swap the items
+		switch(equipSlot) {
+		
+		case ARMOR:
+			hero.setArmorItem(equip);
+			break;
+		
+		case TRINKET:
+			hero.setTrinketItem(equip);
+			break;
+		
+		case WEAPON:
+			hero.setWeaponItem(equip);
+			break;
+			
+		default:
+			break;
+		
+		}
+		
+		if(dequip == null) {
+			hero.getInventory().remove(invSlot);
+		}
+		else {
+			hero.getInventory().put(invSlot, dequip);
+		}
+
+		// TODO: call on equip and on dequip for affixes!
+		
+		// Create updates
+		JsonObject updates = new JsonObject();
+		updates.add("" + invSlot, gson.toJsonTree(dequip));
+		updates.add("" + equipSlot, gson.toJsonTree(equip));
+		return updates;
+	}
+	
+	@Transactional
+	public JsonObject useInventoryItem(String username, int heroId, int useSlot) throws MythlandsServiceException {
 		MythlandsCharacter hero = getCharacter(heroId);
 		ItemInstance use = hero.getInventory().get(useSlot);
 		
@@ -254,8 +318,8 @@ public class MythlandsGameService {
 			var consumable = (ConsumableItemTemplate) template;
 			CombatAction onConsume = consumable.getOnConsume();
 			CombatActionFunction function = getCombatActionFunction(onConsume.getFunctionName());
-			// TODO: include boss (or maybe encapsulate data required for these types of calls into a game context object?
-			function.execute(heroId, null, onConsume.getActionData());
+			// TODO: include boss
+			function.execute(new CombatContext(username, heroId, null), onConsume.getActionData());
 			use.modifyCount(-1);
 			
 			// Delete item if out
@@ -333,8 +397,6 @@ public class MythlandsGameService {
 		return changes;
 		
 	}
-	
-	
 	
 	public void addInventoryItem(int heroId, String itemInstanceId) throws MythlandsServiceException {
 		addInventoryItem(heroId, UUID.fromString(itemInstanceId));
@@ -465,32 +527,80 @@ public class MythlandsGameService {
 	/*                     Item Methods                     */
 	/********************************************************/
 	
+	@Transactional 
+	public ItemAffixDTO createItemAffix(String id, String onEquipId, String onDequipId) throws MythlandsServiceException {
+		
+		// Make sure that the affix doesn't already exist
+		var existing = affixRepository.findById(id);
+		if(existing.isPresent()) {
+			throw new MythlandsServiceException("An affix with that id already exists.");
+		}
+		
+		// Get the equip/dequip actions
+		CombatAction onEquip = getCombatAction(onEquipId);
+		CombatAction onDequip = getCombatAction(onDequipId);
+		
+		// Create the affix
+		ItemAffix affix = new ItemAffix(id, onEquip, onDequip);
+		affix = affixRepository.save(affix);
+		return new ItemAffixDTO(affix);
+	}
+	
 	@Transactional
-	public ConsumableItemTemplateDTO createConsumableItemTemplate(String name, String icon, String desc, ItemRarity rarity, int stackSize, String actionId) 
+	public EquippableItemTemplateDTO createEquippableItemTemplate(
+			String id, String name, String icon, String desc, ItemRarity rarity, EquippableItemSlot slot, String... affixIds) 
+			throws MythlandsServiceException {
+		
+		// Check if identical template already exists
+		var existing = templateRepository.findById(id);
+		
+		if(existing.isPresent()) {
+			throw new MythlandsServiceException("A template with that id already exists.");
+		}
+		
+		// Collect the affixes
+		ArrayList<ItemAffix> affixes = new ArrayList<>();
+		for(var affixId : affixIds) {
+			affixes.add(getItemAffix(affixId));
+		}
+		
+		EquippableItemTemplate template = new EquippableItemTemplate(
+				id, name, icon, desc, rarity, slot, affixes.toArray(new ItemAffix[affixes.size()])
+		);
+		
+		template = templateRepository.save(template);
+		return new EquippableItemTemplateDTO(template);
+	}
+	
+	@Transactional
+	public ConsumableItemTemplateDTO createConsumableItemTemplate(
+			String id, String name, String icon, String desc, ItemRarity rarity, int stackSize, String actionId) 
 			throws MythlandsServiceException {
 	
 		// Check if an identical template already exists.
-		var existing = consumableRepository.findByNameAndIconAndDescriptionAndStackSizeAndRarityAndOnConsumeId(
-				name, icon, desc, stackSize, rarity, actionId
-		);
+		var existing = templateRepository.findById(id);
 		
-		if(existing.size() > 0) {
-			throw new MythlandsServiceException("An identical template already exists.");
+		if(existing.isPresent()) {
+			throw new MythlandsServiceException("A template with that id already exists.");
 		}
 		
 		var action = getCombatAction(actionId);
-		ConsumableItemTemplate template = new ConsumableItemTemplate(name, icon, desc, rarity, stackSize, action);
-		templateRepository.save(template);
+		ConsumableItemTemplate template = new ConsumableItemTemplate(id, name, icon, desc, rarity, stackSize, action);
+		template = templateRepository.save(template);
 		
 		return new ConsumableItemTemplateDTO(template);
 	}
 	
-	public ItemInstanceDTO createItemInstance(int templateId, int count) throws MythlandsServiceException {
+	public ItemInstanceDTO createItemInstance(String templateId) throws MythlandsServiceException {
+		return createItemInstance(templateId, 1, new HashMap<String, String>());
+	}
+	
+	public ItemInstanceDTO createItemInstance(String templateId, int count) throws MythlandsServiceException {
 		return createItemInstance(templateId, count, new HashMap<String, String>());
 	}
 	
 	@Transactional
-	public ItemInstanceDTO createItemInstance(int templateId, int count, Map<String, String> itemData) 
+	public ItemInstanceDTO createItemInstance(String templateId, int count, Map<String, String> itemData) 
 			throws MythlandsServiceException { 
 		
 		var template = getItemTemplate(templateId);
@@ -511,18 +621,10 @@ public class MythlandsGameService {
 		return hero.get();
 	}
 	
-	private ItemTemplate getItemTemplate(int templateId) throws MythlandsServiceException {
+	private ItemTemplate getItemTemplate(String templateId) throws MythlandsServiceException {
 		Optional<ItemTemplate> template = templateRepository.findById(templateId);
 		if(template.isEmpty()) {
 			throw new MythlandsServiceException("No item template with id " + templateId + " found.");
-		}
-		return template.get();
-	}
-	
-	private ConsumableItemTemplate getConsumableItemTemplate(int templateId) throws MythlandsServiceException {
-		Optional<ConsumableItemTemplate> template = consumableRepository.findById(templateId);
-		if(template.isEmpty()) {
-			throw new MythlandsServiceException("No consumable item template with id " + templateId + " found.");
 		}
 		return template.get();
 	}
@@ -548,6 +650,14 @@ public class MythlandsGameService {
 			throw new MythlandsServiceException("No item instance with id " + id + " found.");
 		}
 		return instance.get();
+	}
+	
+	private ItemAffix getItemAffix(String id) throws MythlandsServiceException {
+		Optional<ItemAffix> affix = affixRepository.findById(id);
+		if(affix.isEmpty()) {
+			throw new MythlandsServiceException("No item affix found with id " + id);
+		}
+		return affix.get();
 	}
 	
 }
