@@ -91,7 +91,7 @@ export default {
 				this.tooltipY = element.offset().top + element.outerHeight();
 
 				// Move the item tooltip to the page body
-				$("#item-tooltip-slot-" + this.itemSlot).appendTo($("body"));
+				$("#item-tooltip-slot-" + this.itemSlot).appendTo($("#app"));
 			}
 		},
 

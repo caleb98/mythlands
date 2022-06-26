@@ -331,6 +331,10 @@ export default {
 					this.cooldownTime = 0;
 				}, this.cooldownTime * 1000);
 			}
+		},
+
+		activeCharacterId() {
+			this.loadInventory();
 		}
 	},
 
