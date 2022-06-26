@@ -224,6 +224,56 @@ public class MythlandsGameService {
 		return updates;
 	}
 	
+	public List<MythlandsCharacterDTO> getHallOfFameCharacters(int pageSize, int pageNum) {
+		List<MythlandsCharacter> characters = characterRepository.findByOrderByLevelDescXpDesc(
+			Pageable.ofSize(pageSize).withPage(pageNum)
+		);
+		return characters.stream()
+			.map(MythlandsCharacterDTO::new)
+			.collect(Collectors.toList());
+		
+	}
+	
+	/********************************************************/
+	/*                 Inventory Methods                    */
+	/********************************************************/
+	
+	@Transactional
+	public JsonObject useInventoryItem(int heroId, int useSlot) throws MythlandsServiceException {
+		MythlandsCharacter hero = getCharacter(heroId);
+		ItemInstance use = hero.getInventory().get(useSlot);
+		
+		// Can't use empty slot
+		if(use == null) {
+			return new JsonObject();
+		}
+		
+		// Use function is based on item type
+		ItemTemplate template = use.getTemplate();
+		if(template instanceof ConsumableItemTemplate) {
+			var consumable = (ConsumableItemTemplate) template;
+			CombatAction onConsume = consumable.getOnConsume();
+			CombatActionFunction function = getCombatActionFunction(onConsume.getFunctionName());
+			// TODO: include boss (or maybe encapsulate data required for these types of calls into a game context object?
+			function.execute(heroId, null, onConsume.getActionData());
+			use.modifyCount(-1);
+			
+			// Delete item if out
+			if(use.getCount() == 0) {
+				hero.getInventory().remove(useSlot);
+				itemRepository.delete(use);
+			}
+		}
+		// Non-usable item type
+		else {
+			return new JsonObject();
+		}
+		
+		JsonObject change = new JsonObject();
+		change.add("" + useSlot, gson.toJsonTree(hero.getInventory().get(useSlot)));
+		return change;
+	}
+	
 	@Transactional
 	public JsonObject moveInventoryItem(int heroId, int fromSlot, int toSlot) throws MythlandsServiceException {
 		MythlandsCharacter hero = getCharacter(heroId);
@@ -283,6 +333,8 @@ public class MythlandsGameService {
 		return changes;
 		
 	}
+	
+	
 	
 	public void addInventoryItem(int heroId, String itemInstanceId) throws MythlandsServiceException {
 		addInventoryItem(heroId, UUID.fromString(itemInstanceId));
@@ -373,16 +425,6 @@ public class MythlandsGameService {
 	
 	public boolean isDeceased(int heroId) throws MythlandsServiceException {
 		return getCharacter(heroId).isDeceased();
-	}
-	
-	public List<MythlandsCharacterDTO> getHallOfFameCharacters(int pageSize, int pageNum) {
-		List<MythlandsCharacter> characters = characterRepository.findByOrderByLevelDescXpDesc(
-			Pageable.ofSize(pageSize).withPage(pageNum)
-		);
-		return characters.stream()
-			.map(MythlandsCharacterDTO::new)
-			.collect(Collectors.toList());
-		
 	}
 	
 	/********************************************************/

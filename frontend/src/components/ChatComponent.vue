@@ -87,7 +87,7 @@ export default {
         hasScrollBar(element) {
             return element.get(0).scrollHeight > element.height();
         },
-        messageRightClickHanlder(event, element) {
+        messageRightClickHandler(event, element) {
             var message = $(element);
 			this.selectedMessageId = message.data("messageId");
 			this.selectedMessageUser = message.data("username");
@@ -159,7 +159,7 @@ export default {
                     $(".chat-message")
                         .off("contextmenu")
                         .on("contextmenu", function (event) {
-                        self.messageRightClickHanlder(event, this);
+                        self.messageRightClickHandler(event, this);
                     });
                 });
             }

@@ -7,8 +7,8 @@
 		@drop="drop">
 
 
-		<div draggable="true" style="background-color: #00000000" @dragstart="drag">
-			<img :src="'/img' + icon" class="item-icon-image" draggable="false">
+		<div draggable="true" style="background-color: #00000000" @dragstart="drag" @mouseup="click" @contextmenu="event => event.preventDefault()">
+			<img :src="'/img' + icon" class="item-icon-image" draggable="false" @contextmenu="event => event.preventDefault()">
 
 			<div class="item-count-wrapper" v-if="displayItem">
 				<div class="item-count" v-if="displayItem.template.stackSize != 1">{{displayItem.count}}</div>
@@ -125,6 +125,20 @@ export default {
 		drag(event) {
 			event.dataTransfer.setData("fromSlot", this.itemSlot);
 			this.hovering = false;
+		},
+
+		click(event) {
+			if(event.button == 2) {
+				WS.publish({
+					destination: "/game/character.useinventory",
+					body: JSON.stringify({
+						useSlot: this.itemSlot
+					})
+				});
+			}
+
+			event.preventDefault();
+			return false;
 		}
 
 	}
