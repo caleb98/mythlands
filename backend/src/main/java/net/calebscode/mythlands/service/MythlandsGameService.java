@@ -4,19 +4,29 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
+import net.calebscode.mythlands.core.Boss;
+import net.calebscode.mythlands.core.ContributionInfo;
+import net.calebscode.mythlands.core.NameGenerator;
+import net.calebscode.mythlands.core.Skill;
 import net.calebscode.mythlands.core.action.CombatAction;
 import net.calebscode.mythlands.core.action.CombatActionFunction;
 import net.calebscode.mythlands.core.action.CombatContext;
@@ -28,19 +38,25 @@ import net.calebscode.mythlands.core.item.ItemAffixDTO;
 import net.calebscode.mythlands.core.item.ItemInstance;
 import net.calebscode.mythlands.core.item.ItemRarity;
 import net.calebscode.mythlands.core.item.ItemTemplate;
+import net.calebscode.mythlands.dto.BossDTO;
 import net.calebscode.mythlands.dto.CombatActionDTO;
 import net.calebscode.mythlands.dto.ConsumableItemTemplateDTO;
 import net.calebscode.mythlands.dto.EquippableItemTemplateDTO;
 import net.calebscode.mythlands.dto.ItemInstanceDTO;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
+import net.calebscode.mythlands.entity.MythlandsUser;
+import net.calebscode.mythlands.event.BossDiedEvent;
+import net.calebscode.mythlands.event.BossUpdateEvent;
+import net.calebscode.mythlands.event.CharacterUpdateEvent;
+import net.calebscode.mythlands.event.CooldownUpdateEvent;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
-import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
 import net.calebscode.mythlands.repository.MythlandsAffixRepository;
 import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
 import net.calebscode.mythlands.repository.MythlandsCombatActionRepository;
 import net.calebscode.mythlands.repository.MythlandsItemRepository;
 import net.calebscode.mythlands.repository.MythlandsItemTemplateRepository;
+import net.calebscode.mythlands.repository.MythlandsUserRepository;
 
 @Service
 public class MythlandsGameService {
@@ -50,24 +66,151 @@ public class MythlandsGameService {
 	@Autowired private MythlandsCombatActionRepository actionRepository;	
 	@Autowired private MythlandsCharacterRepository characterRepository;	
 	@Autowired private MythlandsAffixRepository affixRepository;
-	
-	@Autowired private Gson gson;
+	@Autowired private MythlandsUserRepository userRepository;
 	
 	private HashMap<String, CombatActionFunction> functionMap = new HashMap<>();
+	
+	@Autowired private ApplicationEventPublisher eventPublisher;
+	@Autowired private Gson gson;
+	private Logger logger = LoggerFactory.getLogger(MythlandsGameService.class);
+	
+	@Autowired private NameGenerator bossNameGenerator;
+	private Random random = new Random();
+	private Boss boss;
+	private int bossCount = 1;
+	private HashMap<Integer, ContributionInfo> contribs = new HashMap<>();
+	private static Object bossLock = new Object();
+	
+	@PostConstruct
+	public void init() {
+		boss = new Boss("Boss " + bossCount++ + " - " + bossNameGenerator.generateName(), 15); 
+	}
 	
 	/********************************************************/
 	/*                  Character Methods                   */
 	/********************************************************/
 	
 	@Transactional
-	public void setAttackCooldown(int heroId, long ready) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public void attackBoss(String username, int bossId) throws MythlandsServiceException {
+		// Make sure character is alive
+		MythlandsCharacter hero = getUserCharacter(username);
+		if(hero.isDeceased()) {
+			throw new MythlandsServiceException("Hero is dead.");
+		}
+		
+		// Check attack cooldown
+		long currentTime = System.currentTimeMillis();
+		if(currentTime < hero.getAttackReady()) {
+			throw new MythlandsServiceException("Attack is still on cooldown.");
+		}
+		
+		// Do boss calculations
+		synchronized(bossLock) {
+			
+			// Check boss still alive
+			if(boss.getCurrentHealth() <= 0) {
+				throw new MythlandsServiceException("That boss is dead.");
+			}
+			
+			// Check the boss the user wanted to attack
+			// is still the active boss.
+			if(boss.getId() != bossId) {
+				throw new MythlandsServiceException("The boss you attempted to"
+						+ " attack is not the currently active boss.");
+			}
+			
+			// Do the attack
+			boss.damage(1);
+			if(!contribs.containsKey(hero.getId())) {
+				contribs.put(hero.getId(), new ContributionInfo(username));
+			}
+			var info = contribs.get(hero.getId());
+			info.addTotalDamage(1);
+			info.incrementAttacks();
+			
+			// Check for boss kill
+			if(boss.getCurrentHealth() <= 0) {
+				info.setDealtKillingBlow(true);
+				eventPublisher.publishEvent(new BossDiedEvent(boss, new MythlandsCharacterDTO(hero)));
+				boss = new Boss(
+						String.format("Boss %d - %s", bossCount++, bossNameGenerator.generateName()),
+						12 + random.nextInt(8)
+				);
+				
+				processContributorAwards();
+			}
+			
+		}
+		
+		// Boss info has been updated
+		eventPublisher.publishEvent(new BossUpdateEvent(boss));
+		
+		// Do attack post processing
+		var receivedDamage = dealDamage(username, 1);
+		var xpGained = grantXp(username, 1);
+		// TODO: xp gain modifier
+		// TODO: gold?
+		
+		eventPublisher.publishEvent(new CharacterUpdateEvent(username, receivedDamage, xpGained));
+		
+		// Set attack cooldown
+		int cooldownTime = (int) Math.round(hero.getAttackCooldown().getValue());
+		setAttackCooldown(username, currentTime + cooldownTime);
+		eventPublisher.publishEvent(new CooldownUpdateEvent(username, cooldownTime / 1000.0));
+	}
+	
+	@Transactional
+	private void processContributorAwards() {
+		// Process each contribution
+		for(Entry<Integer, ContributionInfo> entry : contribs.entrySet()) {
+			
+			// Retrieve the hero
+			MythlandsCharacter hero;
+			try { 
+				hero = getCharacter(entry.getKey());
+			} catch (MythlandsServiceException e) {
+				logger.warn("Unable to retrieve character while processing "
+						+ "contribution rewards: {}", e.getMessage());
+				continue;
+			}
+			
+			// Retrieve their contributions
+			var contrib = entry.getValue();
+			
+			// Make sure the contributing hero is not dead
+			if(hero.isDeceased()) {
+				continue;
+			}
+			
+			// Add their xp
+			int xpGained = 5 + (contrib.dealtKillingBlow() ? 5 : 0);
+			try {
+				JsonObject updates = grantXp(contrib.getUsername(), xpGained);
+				eventPublisher.publishEvent(new CharacterUpdateEvent(contrib.getUsername(), updates));
+			} catch (MythlandsServiceException e) {
+				logger.warn("Unable to grant xp to contributor {}: {}",
+						hero.getFullName(), e.getMessage());
+			}
+		}
+		
+		// Clear the map for the next boss
+		contribs.clear();
+	}
+	
+	@Transactional
+	public BossDTO getActiveBoss() {
+		return new BossDTO(boss);
+	}
+	
+	@Transactional
+	public void setAttackCooldown(String username, long ready) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		hero.setAttackReady(ready);
 	}
 	
 	@Transactional
-	public JsonObject dealDamage(int heroId, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public JsonObject dealDamage(String username, double amount) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		hero.modifyCurrentHealth(-amount);
 		double newHealth = hero.getCurrentHealth();
 		
@@ -82,8 +225,8 @@ public class MythlandsGameService {
 	}
 	
 	@Transactional
-	public JsonObject gainHealth(int heroId, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public JsonObject gainHealth(String username, double amount) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		double prevHealth = hero.getCurrentHealth();
 		hero.modifyCurrentHealth(amount);
 		JsonObject update = new JsonObject();
@@ -94,8 +237,8 @@ public class MythlandsGameService {
 	}
 	
 	@Transactional
-	public JsonObject loseMana(int heroId, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public JsonObject loseMana(String username, double amount) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		double prevMana = hero.getCurrentMana();
 		hero.modifyCurrentMana(-amount);
 		JsonObject update = new JsonObject();
@@ -106,8 +249,8 @@ public class MythlandsGameService {
 	}
 	
 	@Transactional
-	public JsonObject gainMana(int heroId, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public JsonObject gainMana(String username, double amount) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		double prevMana = hero.getCurrentMana();
 		hero.modifyCurrentMana(amount);
 		JsonObject update = new JsonObject();
@@ -118,8 +261,8 @@ public class MythlandsGameService {
 	}
 	
 	@Transactional
-	public JsonObject useSkillPoint(int heroId, SpendSkillPointMessage spend) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public void useSkillPoint(String username, Skill skill) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		
 		// Check hero meets requirements to skill up
 		if(hero.isDeceased()) {
@@ -133,7 +276,7 @@ public class MythlandsGameService {
 		hero.setSkillPoints(hero.getSkillPoints() - 1);
 		updates.addProperty("skillPoints", hero.getSkillPoints());
 		
-		switch(spend.skill) {
+		switch(skill) {
 		
 		case ATTUNEMENT:
 			hero.getAttunement().modifyBase(1);
@@ -180,21 +323,19 @@ public class MythlandsGameService {
 			updates.addProperty("currentHealth", hero.getCurrentHealth());
 			updates.addProperty("maxHealth", hero.getMaxHealth());
 			break;
-			
-		default:
-			// TODO: error
-			break;
 		
 		}		
 		
-		return updates;
+		if(updates.size() > 0) {
+			eventPublisher.publishEvent(new CharacterUpdateEvent(username, updates));
+		}
 	}
 	
 	@Transactional
-	public JsonObject grantXp(int heroId, int xp) 
+	public JsonObject grantXp(String username, int xp) 
 			throws MythlandsServiceException {
 		
-		MythlandsCharacter hero = getCharacter(heroId);
+		MythlandsCharacter hero = getUserCharacter(username);
 		
 		int oldLevel = hero.getLevel();
 		
@@ -613,6 +754,18 @@ public class MythlandsGameService {
 	/********************************************************/
 	/*               Private Utility Methods                */
 	/********************************************************/
+	
+	private MythlandsCharacter getUserCharacter(String username) throws MythlandsServiceException {
+		MythlandsUser user = userRepository.findByUsername(username);
+		if(user == null) {
+			throw new MythlandsServiceException("No user with username " + username);
+		}
+		if(user.getActiveCharacter() == null) {
+			throw new MythlandsServiceException("User " + username + " has no active character.");
+		}
+		return user.getActiveCharacter();
+	}
+	
 	private MythlandsCharacter getCharacter(int id) throws MythlandsServiceException {
 		Optional<MythlandsCharacter> hero = characterRepository.findById(id);
 		if(hero.isEmpty()) {

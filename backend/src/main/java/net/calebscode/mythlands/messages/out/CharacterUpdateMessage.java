@@ -5,18 +5,21 @@ import com.google.gson.JsonObject;
 
 public class CharacterUpdateMessage {
 
-	public final JsonArray updates = new JsonArray();
+	public final JsonArray updates;
 	
-	public CharacterUpdateMessage() {}
-	
-	public CharacterUpdateMessage(JsonObject... updateInfos) {
-		for(JsonObject o : updateInfos) {
-			updates.add(o);
-		}
+	public CharacterUpdateMessage(JsonArray updates) {
+		this.updates = updates;
 	}
 	
-	public void add(JsonObject updateInfo) {
-		updates.add(updateInfo);
+	public CharacterUpdateMessage(JsonObject... updateInfos) {
+		updates = new JsonArray();
+		add(updateInfos);
+	}
+	
+	public void add(JsonObject... updateInfos) {
+		for(JsonObject update : updateInfos) {
+			updates.add(update);
+		}
 	}
 	
 }

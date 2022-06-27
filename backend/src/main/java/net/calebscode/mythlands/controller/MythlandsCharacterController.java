@@ -77,10 +77,7 @@ public class MythlandsCharacterController {
 	@MessageMapping("/character.skillup")
 	public void spendSkillPoint(SpendSkillPointMessage spend, Principal principal) {
 		try {
-			var active = userService.getActiveCharacter(principal.getName());
-			JsonObject updates = gameService.useSkillPoint(active.id, spend);
-			messenger.convertAndSendToUser(principal.getName(), "/local/character",
-					gson.toJson(new CharacterUpdateMessage(updates)));
+			gameService.useSkillPoint(principal.getName(), spend.skill);
 		} catch (MythlandsServiceException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));
 		}
