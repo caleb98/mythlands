@@ -1,8 +1,5 @@
 package net.calebscode.mythlands.dto;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.calebscode.mythlands.core.item.ConsumableItemTemplate;
 import net.calebscode.mythlands.core.item.EquippableItemTemplate;
 import net.calebscode.mythlands.core.item.ItemInstance;
@@ -14,14 +11,10 @@ public class ItemInstanceDTO {
 	public final String type;
 	public final ItemTemplateDTO template;
 	public final int count;
-	public final Map<String, String> itemData;
 	
 	public ItemInstanceDTO(ItemInstance instance) {
 		id = instance.getId().toString();
 		count = instance.getCount();
-		
-		itemData = new HashMap<>();
-		instance.getData().forEach(itemData::put);
 		
 		// Create the correct ItemTemplateDTO subclass depending on the type of
 		// the ItemTemplate

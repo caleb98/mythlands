@@ -1,6 +1,7 @@
 package net.calebscode.mythlands.core;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.transaction.Transactional;
 
@@ -10,18 +11,14 @@ import org.springframework.stereotype.Component;
 
 import net.calebscode.mythlands.core.item.EquippableItemSlot;
 import net.calebscode.mythlands.core.item.ItemRarity;
-import net.calebscode.mythlands.dto.ItemInstanceDTO;
-import net.calebscode.mythlands.entity.MythlandsCharacter;
+import net.calebscode.mythlands.dto.EquippableItemInstanceDTO;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
-import net.calebscode.mythlands.repository.MythlandsCharacterRepository;
 import net.calebscode.mythlands.service.MythlandsGameService;
 
 @Component
 public class Test implements CommandLineRunner {
 
 	@Autowired private MythlandsGameService gameService;
-	
-	@Autowired private MythlandsCharacterRepository characterRepository;
 	
 	@Transactional
 	public void run(String... args) {
@@ -107,20 +104,39 @@ public class Test implements CommandLineRunner {
 		}
 		
 		try {
-			MythlandsCharacter hero = characterRepository.getById(1);
-			ItemInstanceDTO healingPotion = gameService.createItemInstance("LesserHealingPotion", 7);
-			gameService.addInventoryItem(hero.getId(), healingPotion.id);
-
-			ItemInstanceDTO manaPotion = gameService.createItemInstance("LesserManaPotion", 7);
-			gameService.addInventoryItem(hero.getId(), manaPotion.id);
+			gameService.createItemAffix("StrengthAffix", "ApplyStatMod", "RemoveStatMod");
+		} catch (MythlandsServiceException e) {
+			System.err.println(e.getMessage());
+		}
+		
+		try {
+			gameService.createItemAffix("StaminaAffix", "ApplyStatMod", "RemoveStatMod");
+		} catch (MythlandsServiceException e) {
+			System.err.println(e.getMessage());
+		}
+		
+		try {
 			
-			ItemInstanceDTO axe = gameService.createItemInstance("Battleaxe");
-			ItemInstanceDTO arm = gameService.createItemInstance("LeatherArmor");
-			ItemInstanceDTO tkt = gameService.createItemInstance("WimsyWard");
-			
-			gameService.addInventoryItem(hero.getId(), axe.id);
-			gameService.addInventoryItem(hero.getId(), arm.id);
-			gameService.addInventoryItem(hero.getId(), tkt.id);
+			if(gameService.getInventory(1).size() == 0) {
+				var strData = new HashMap<String, String>();
+				strData.put("stat", "STRENGTH");
+				strData.put("increase", "5");
+				
+				var stmData = new HashMap<String, String>();
+				stmData.put("stat", "STAMINA");
+				stmData.put("increase", "5");
+				
+				var affixData = new HashMap<String, Map<String, String>>();
+				affixData.put("StrengthAffix", strData);
+				affixData.put("StaminaAffix", stmData);
+				
+				EquippableItemInstanceDTO dto = gameService.createEquippableItemInstance(
+						"LeatherArmor", 
+						affixData
+				);
+				
+				gameService.addInventoryItem(1, dto.id);
+			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}

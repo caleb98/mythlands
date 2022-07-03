@@ -22,7 +22,9 @@ import javax.persistence.Table;
 import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CascadeType;
 
+import net.calebscode.mythlands.core.StatType;
 import net.calebscode.mythlands.core.StatValue;
+import net.calebscode.mythlands.core.item.EquippableItemInstance;
 import net.calebscode.mythlands.core.item.EquippableItemSlot;
 import net.calebscode.mythlands.core.item.EquippableItemTemplate;
 import net.calebscode.mythlands.core.item.ItemInstance;
@@ -62,11 +64,11 @@ public class MythlandsCharacter {
 	private int inventoryCapacity = 100;
 	
 	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
-	private ItemInstance weaponItem;
+	private EquippableItemInstance weaponItem;
 	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
-	private ItemInstance armorItem;
+	private EquippableItemInstance armorItem;
 	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
-	private ItemInstance trinketItem;
+	private EquippableItemInstance trinketItem;
 	
 	/********************************************************/
 	/*                     Core Stats                       */
@@ -269,11 +271,11 @@ public class MythlandsCharacter {
 		return inventoryCapacity;
 	}
 	
-	public ItemInstance getArmorItem() {
+	public EquippableItemInstance getArmorItem() {
 		return armorItem;
 	}
 	
-	public void setArmorItem(ItemInstance armor) {
+	public void setArmorItem(EquippableItemInstance armor) {
 		if(armor != null) {
 			if(!(armor.getTemplate() instanceof EquippableItemTemplate)) {
 				throw new IllegalArgumentException("Armor equip item must be an equippable item type.");
@@ -292,11 +294,11 @@ public class MythlandsCharacter {
 		return armorItem != null;
 	}
 	
-	public ItemInstance getTrinketItem() {
+	public EquippableItemInstance getTrinketItem() {
 		return trinketItem;
 	}
 	
-	public void setTrinketItem(ItemInstance trinket) {
+	public void setTrinketItem(EquippableItemInstance trinket) {
 		if(trinket != null) {
 			if(!(trinket.getTemplate() instanceof EquippableItemTemplate)) {
 				throw new IllegalArgumentException("Trinket equip item must be an equippable item type.");
@@ -315,11 +317,11 @@ public class MythlandsCharacter {
 		return trinketItem != null;
 	}
 	
-	public ItemInstance getWeaponItem() {
+	public EquippableItemInstance getWeaponItem() {
 		return weaponItem;
 	}
 	
-	public void setWeaponItem(ItemInstance weapon) {
+	public void setWeaponItem(EquippableItemInstance weapon) {
 		if(weapon != null) {
 			if(!(weapon.getTemplate() instanceof EquippableItemTemplate)) {
 				throw new IllegalArgumentException("Weapon equip item must be an equippable item type.");
@@ -566,14 +568,15 @@ public class MythlandsCharacter {
 	}
 	
 	public boolean isInventoryFull() {
-		for(int i = 0; i < inventoryCapacity; i++) {
-			if(!inventory.containsKey(i))
-				return false;
-		}
-		return true;
+		return inventory.size() >= inventoryCapacity;
 	}
 	
-	public ItemInstance getEquipped(EquippableItemSlot slot) {
+	/**
+	 * Returns the item currently equipped in the given slot
+	 * @param slot
+	 * @return item in slot; null if no item equipped
+	 */
+	public EquippableItemInstance getEquipped(EquippableItemSlot slot) {
 		switch(slot) {
 		
 		case ARMOR:		return armorItem;
@@ -581,6 +584,33 @@ public class MythlandsCharacter {
 		case WEAPON:	return weaponItem;
 		
 		default:		return null;
+		
+		}
+	}
+
+	/**
+	 * Returns the StatValue object for a given StatType.
+	 * @param stat
+	 * @return the statvalue
+	 */
+	public StatValue getStat(StatType stat) {
+		switch(stat) {
+		
+		case ATTACK_COOLDOWN:	return attackCooldown;
+		case ATTUNEMENT:		return attunement;
+		case AVOIDANCE:			return avoidance;
+		case DEXTERITY:			return dexterity;
+		case GOLD_GAIN:			return goldGain;
+		case MAX_HEALTH:		return maxHealth;
+		case MAX_MANA:			return maxMana;
+		case RESISTANCE:		return resistance;
+		case SPIRIT:			return spirit;
+		case STAMINA:			return stamina;
+		case STRENGTH:			return strength;
+		case TOUGHNESS:			return toughness;
+		case XP_GAIN:			return xpGain;
+		
+		default: return null;
 		
 		}
 	}

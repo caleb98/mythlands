@@ -5,19 +5,16 @@ import java.util.HashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.dto.MythlandsUserDTO;
 import net.calebscode.mythlands.event.CharacterUpdateEvent;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
-import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.service.MythlandsGameService;
 import net.calebscode.mythlands.service.MythlandsUserService;
 
@@ -30,9 +27,7 @@ public class CharacterSessionManager {
 
 	@Autowired private MythlandsUserService userService;
 	@Autowired private MythlandsGameService gameService;
-	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private ApplicationEventPublisher eventPublisher;
-	@Autowired private Gson gson;
 	
 	private Object activeUsersLock = new Object();
 	private Thread heroUpdateThread;

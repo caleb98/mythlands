@@ -10,10 +10,6 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.MapKeyColumn;
 
-import org.springframework.beans.factory.annotation.Autowired;
-
-import net.calebscode.mythlands.core.Boss;
-
 @Entity
 public class CombatAction {
 	

@@ -1,27 +1,25 @@
 package net.calebscode.mythlands.core.item;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
-import javax.persistence.CollectionTable;
 import javax.persistence.Column;
-import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
-import javax.persistence.MapKeyColumn;
-import javax.persistence.MapKeyJoinColumn;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.GenericGenerator;
 
 @Entity
-@Table(name = "items")
-public class ItemInstance {
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorFormula("(select item_templates.item_type from item_templates where item_templates.id = item_template)")
+@Table(name = "item_instances")
+public abstract class ItemInstance {
 
 	@Id
 	@GeneratedValue(generator = "uuid2")
@@ -35,11 +33,6 @@ public class ItemInstance {
 	
 	@Column
 	private int count;
-	
-	@ElementCollection
-	@CollectionTable(name = "item_data")
-	@MapKeyColumn(name = "data_key")
-	private Map<String, String> itemData;
 
 	protected ItemInstance() {}
 	
@@ -54,7 +47,6 @@ public class ItemInstance {
 		
 		this.template = template;
 		this.count = count;
-		itemData = new HashMap<>();
 	}
 	
 	public UUID getId() {
@@ -82,12 +74,24 @@ public class ItemInstance {
 		}
 	}
 	
-	public Map<String, String> getData() {
-		return itemData;
-	}
-	
 	public ItemTemplate getTemplate() {
 		return template;
+	}
+	
+	public String getName() {
+		return template.getName();
+	}
+	
+	public String getIcon() {
+		return template.getIcon();
+	}
+	
+	public String getDescription() {
+		return template.getDescription();
+	}
+	
+	public ItemRarity getItemRarity() {
+		return template.getRarity();
 	}
 	
 	/**
@@ -107,9 +111,9 @@ public class ItemInstance {
 		}
 		
 		// Items must have same item data to be considered stackable.
-		if(!itemData.equals(other.itemData)) {
-			return false;
-		}
+//		if(!itemData.equals(other.itemData)) {
+//			return false;
+//		}
 		
 		// All checks passed. Is stackable.
 		return true;

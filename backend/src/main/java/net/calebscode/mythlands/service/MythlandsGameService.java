@@ -1,6 +1,5 @@
 package net.calebscode.mythlands.service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,22 +25,26 @@ import com.google.gson.JsonObject;
 import net.calebscode.mythlands.core.Boss;
 import net.calebscode.mythlands.core.ContributionInfo;
 import net.calebscode.mythlands.core.NameGenerator;
-import net.calebscode.mythlands.core.Skill;
+import net.calebscode.mythlands.core.StatType;
 import net.calebscode.mythlands.core.action.CombatAction;
 import net.calebscode.mythlands.core.action.CombatActionFunction;
 import net.calebscode.mythlands.core.action.CombatContext;
+import net.calebscode.mythlands.core.item.ConsumableItemInstance;
 import net.calebscode.mythlands.core.item.ConsumableItemTemplate;
+import net.calebscode.mythlands.core.item.EquippableItemInstance;
 import net.calebscode.mythlands.core.item.EquippableItemSlot;
 import net.calebscode.mythlands.core.item.EquippableItemTemplate;
-import net.calebscode.mythlands.core.item.ItemAffix;
-import net.calebscode.mythlands.core.item.ItemAffixDTO;
+import net.calebscode.mythlands.core.item.ItemAffixInstance;
+import net.calebscode.mythlands.core.item.ItemAffixTemplate;
 import net.calebscode.mythlands.core.item.ItemInstance;
 import net.calebscode.mythlands.core.item.ItemRarity;
 import net.calebscode.mythlands.core.item.ItemTemplate;
 import net.calebscode.mythlands.dto.BossDTO;
 import net.calebscode.mythlands.dto.CombatActionDTO;
 import net.calebscode.mythlands.dto.ConsumableItemTemplateDTO;
+import net.calebscode.mythlands.dto.EquippableItemInstanceDTO;
 import net.calebscode.mythlands.dto.EquippableItemTemplateDTO;
+import net.calebscode.mythlands.dto.ItemAffixDTO;
 import net.calebscode.mythlands.dto.ItemInstanceDTO;
 import net.calebscode.mythlands.dto.MythlandsCharacterDTO;
 import net.calebscode.mythlands.entity.MythlandsCharacter;
@@ -146,7 +149,7 @@ public class MythlandsGameService {
 		eventPublisher.publishEvent(new BossUpdateEvent(boss));
 		
 		// Do attack post processing
-		var receivedDamage = dealDamage(username, 1);
+		var receivedDamage = loseHealth(username, 1);
 		var xpGained = grantXp(username, 1);
 		// TODO: xp gain modifier
 		// TODO: gold?
@@ -209,7 +212,7 @@ public class MythlandsGameService {
 	}
 	
 	@Transactional
-	public JsonObject dealDamage(String username, double amount) throws MythlandsServiceException {
+	public JsonObject loseHealth(String username, double amount) throws MythlandsServiceException {
 		MythlandsCharacter hero = getUserCharacter(username);
 		hero.modifyCurrentHealth(-amount);
 		double newHealth = hero.getCurrentHealth();
@@ -261,7 +264,53 @@ public class MythlandsGameService {
 	}
 	
 	@Transactional
-	public void useSkillPoint(String username, Skill skill) throws MythlandsServiceException {
+	public JsonObject addStatModification(String username, StatType stat, double additional, double increase, double more) 
+			throws MythlandsServiceException {
+		
+		MythlandsCharacter hero = getUserCharacter(username);
+		JsonObject changes = new JsonObject();
+		
+		// Apply the stat changes
+		var statValue = hero.getStat(stat);
+		statValue.addAdditional(additional);
+		statValue.addIncrease(increase);
+		statValue.addMultiplier(more);
+
+		// Create object to reflect changes
+		String statString = getStatString(stat);
+		if(statString != null) {
+			changes.addProperty(statString, hero.getStat(stat).getValue());
+		}
+		
+		return changes;
+	}
+	
+	@Transactional
+	public JsonObject removeStatModification(String username, StatType stat, double additional, double increase, double more) 
+			throws MythlandsServiceException {
+		
+		MythlandsCharacter hero = getUserCharacter(username);
+		JsonObject changes = new JsonObject();
+		
+		// TODO: check for invalid values here?
+		
+		// Apply the stat changes
+		var statValue = hero.getStat(stat);
+		statValue.removeAdditional(additional);
+		statValue.removeIncrease(increase);
+		statValue.removeMultiplier(more);
+
+		// Create object to reflect changes
+		String statString = getStatString(stat);
+		if(statString != null) {
+			changes.addProperty(statString, hero.getStat(stat).getValue());
+		}
+		
+		return changes;
+	}
+	
+	@Transactional
+	public void useSkillPoint(String username, StatType skill) throws MythlandsServiceException {
 		MythlandsCharacter hero = getUserCharacter(username);
 		
 		// Check hero meets requirements to skill up
@@ -323,6 +372,9 @@ public class MythlandsGameService {
 			updates.addProperty("currentHealth", hero.getCurrentHealth());
 			updates.addProperty("maxHealth", hero.getMaxHealth());
 			break;
+			
+		default:
+			throw new MythlandsServiceException("Stat \"" + skill + "\" is not a valid skill point stat.");
 		
 		}		
 		
@@ -387,21 +439,22 @@ public class MythlandsGameService {
 	/********************************************************/
 	
 	@Transactional
-	public JsonObject equipItem(int heroId, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+	public JsonObject equipItem(String username, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
+		MythlandsCharacter hero = getUserCharacter(username);
 		
-		// Get the items that we will be swapping
-		ItemInstance equip = hero.getInventory().get(invSlot);
-		ItemInstance dequip = hero.getEquipped(equipSlot);
+		// Check item is equippable
+		ItemInstance equipInstance = hero.getInventory().get(invSlot);
+		if(!(equipInstance instanceof EquippableItemInstance) && equipInstance != null) {
+			throw new MythlandsServiceException("Cannot equip non-equippable item.");
+		}
+		
+		// Get items that we will be swapping
+		EquippableItemInstance equip = (equipInstance == null ? null : (EquippableItemInstance) equipInstance);
+		EquippableItemInstance dequip = hero.getEquipped(equipSlot);
 
-		// Make sure item is equippable (if we're even equipping anything)
+		// Make sure item slot matches
 		if(equip != null) {
-			if(!(equip.getTemplate() instanceof EquippableItemTemplate)) {
-				throw new MythlandsServiceException("Cannot equip non-equippable item.");
-			}
-			
-			// Make sure item slot matches
-			var template = (EquippableItemTemplate) equip.getTemplate();
+			var template = equip.getEquippableItemTemplate();
 			if(template.getSlot() != equipSlot) {
 				throw new MythlandsServiceException("Cannot equip " + template.getSlot() + " to " + equipSlot + " slot.");
 			}
@@ -427,14 +480,31 @@ public class MythlandsGameService {
 		
 		}
 		
+		CombatContext context = new CombatContext(username, hero.getId(), boss);
+		
 		if(dequip == null) {
 			hero.getInventory().remove(invSlot);
 		}
 		else {
 			hero.getInventory().put(invSlot, dequip);
+			
+			var affixes = dequip.getAffixes();
+			for(var affix : affixes) {
+				var data = affix.getData();
+				var func = getCombatActionFunction(affix.getTemplate().getOnDequip());
+				func.execute(context, data);
+			}
 		}
 
 		// TODO: call on equip and on dequip for affixes!
+		if(equip != null) {
+			var affixes = equip.getAffixes();
+			for(var affix : affixes) {
+				var data = affix.getData();
+				var func = getCombatActionFunction(affix.getTemplate().getOnEquip());
+				func.execute(context, data);
+			}
+		}
 		
 		// Create updates
 		JsonObject updates = new JsonObject();
@@ -669,44 +739,35 @@ public class MythlandsGameService {
 	/********************************************************/
 	
 	@Transactional 
-	public ItemAffixDTO createItemAffix(String id, String onEquipId, String onDequipId) throws MythlandsServiceException {
+	public ItemAffixDTO createItemAffix(String id, String onEquipFunction, String onDequipFunction) throws MythlandsServiceException {
 		
 		// Make sure that the affix doesn't already exist
 		var existing = affixRepository.findById(id);
 		if(existing.isPresent()) {
-			throw new MythlandsServiceException("An affix with that id already exists.");
+			throw new MythlandsServiceException("An affix template with that id already exists.");
 		}
 		
-		// Get the equip/dequip actions
-		CombatAction onEquip = getCombatAction(onEquipId);
-		CombatAction onDequip = getCombatAction(onDequipId);
+		// TODO: make sure the equip functions exist?
 		
 		// Create the affix
-		ItemAffix affix = new ItemAffix(id, onEquip, onDequip);
+		ItemAffixTemplate affix = new ItemAffixTemplate(id, onEquipFunction, onDequipFunction);
 		affix = affixRepository.save(affix);
 		return new ItemAffixDTO(affix);
 	}
 	
 	@Transactional
 	public EquippableItemTemplateDTO createEquippableItemTemplate(
-			String id, String name, String icon, String desc, ItemRarity rarity, EquippableItemSlot slot, String... affixIds) 
+			String id, String name, String icon, String desc, ItemRarity rarity, EquippableItemSlot slot) 
 			throws MythlandsServiceException {
 		
 		// Check if identical template already exists
 		var existing = templateRepository.findById(id);
-		
 		if(existing.isPresent()) {
 			throw new MythlandsServiceException("A template with that id already exists.");
 		}
 		
-		// Collect the affixes
-		ArrayList<ItemAffix> affixes = new ArrayList<>();
-		for(var affixId : affixIds) {
-			affixes.add(getItemAffix(affixId));
-		}
-		
 		EquippableItemTemplate template = new EquippableItemTemplate(
-				id, name, icon, desc, rarity, slot, affixes.toArray(new ItemAffix[affixes.size()])
+				id, name, icon, desc, rarity, slot
 		);
 		
 		template = templateRepository.save(template);
@@ -732,23 +793,53 @@ public class MythlandsGameService {
 		return new ConsumableItemTemplateDTO(template);
 	}
 	
-	public ItemInstanceDTO createItemInstance(String templateId) throws MythlandsServiceException {
-		return createItemInstance(templateId, 1, new HashMap<String, String>());
+	public ItemInstanceDTO createConsumableItemInstance(String templateId) throws MythlandsServiceException {
+		return createConsumableItemInstance(templateId, 1, new HashMap<String, String>());
 	}
 	
-	public ItemInstanceDTO createItemInstance(String templateId, int count) throws MythlandsServiceException {
-		return createItemInstance(templateId, count, new HashMap<String, String>());
+	public ItemInstanceDTO createConsumableItemInstance(String templateId, int count) throws MythlandsServiceException {
+		return createConsumableItemInstance(templateId, count, new HashMap<String, String>());
 	}
 	
 	@Transactional
-	public ItemInstanceDTO createItemInstance(String templateId, int count, Map<String, String> itemData) 
+	public ItemInstanceDTO createConsumableItemInstance(String templateId, int count, Map<String, String> itemData) 
 			throws MythlandsServiceException { 
 		
 		var template = getItemTemplate(templateId);
-		ItemInstance instance = new ItemInstance(template, count);
+		if(!(template instanceof ConsumableItemTemplate)) {
+			throw new MythlandsServiceException("Provided item template is not of type consumable: " + templateId);
+		}
+		ConsumableItemInstance instance = new ConsumableItemInstance((ConsumableItemTemplate) template, count);
 		itemRepository.save(instance);
 		
 		return new ItemInstanceDTO(instance);		
+	}
+	
+	@Transactional
+	public EquippableItemInstanceDTO createEquippableItemInstance(String templateId, Map<String, Map<String, String>> affixes) 
+			throws MythlandsServiceException {
+		
+		var template = getItemTemplate(templateId);
+		if(!(template instanceof EquippableItemTemplate)) {
+			throw new MythlandsServiceException("Provided item template is not of type equippable: " + templateId);
+		}
+
+		// Collect the affixes
+		ItemAffixInstance[] affixArray = new ItemAffixInstance[affixes.size()];
+		int i = 0;
+		for(String affixId : affixes.keySet()) {
+			try {
+				var affixTemplate = getItemAffix(affixId);
+				affixArray[i++] = new ItemAffixInstance(affixTemplate, affixes.get(affixId));
+			} catch (MythlandsServiceException e) {
+				logger.warn(e.getMessage());
+			}
+		}
+		
+		EquippableItemInstance instance = new EquippableItemInstance((EquippableItemTemplate) template, affixArray);
+		itemRepository.save(instance);
+		
+		return new EquippableItemInstanceDTO(instance);
 	}
 	
 	/********************************************************/
@@ -805,12 +896,34 @@ public class MythlandsGameService {
 		return instance.get();
 	}
 	
-	private ItemAffix getItemAffix(String id) throws MythlandsServiceException {
-		Optional<ItemAffix> affix = affixRepository.findById(id);
+	private ItemAffixTemplate getItemAffix(String id) throws MythlandsServiceException {
+		Optional<ItemAffixTemplate> affix = affixRepository.findById(id);
 		if(affix.isEmpty()) {
 			throw new MythlandsServiceException("No item affix found with id " + id);
 		}
 		return affix.get();
+	}
+	
+	private String getStatString(StatType stat) {
+		switch(stat) {
+		
+		case ATTACK_COOLDOWN:	return "attackCooldown";
+		case ATTUNEMENT:		return "attunement";
+		case AVOIDANCE:			return "avoidance";
+		case DEXTERITY:			return "dexterity";
+		case GOLD_GAIN:			return "goldGain";
+		case MAX_HEALTH:		return "maxHealth";
+		case MAX_MANA:			return "maxMana";
+		case RESISTANCE:		return "resistance";
+		case SPIRIT:			return "spirit";
+		case STAMINA:			return "stamina";
+		case STRENGTH:			return "strength";
+		case TOUGHNESS:			return "toughness";
+		case XP_GAIN:			return "attunement";
+		
+		default: return null;
+		
+		}
 	}
 	
 }

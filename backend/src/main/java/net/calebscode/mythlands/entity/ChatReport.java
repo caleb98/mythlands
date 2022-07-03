@@ -21,6 +21,8 @@ public class ChatReport {
 	@ManyToOne
 	private MythlandsUser reporter;
 
+	protected ChatReport() {}
+	
 	public ChatReport(ChatMessage message, MythlandsUser reporter) {
 		messageReported = message;
 		this.reporter = reporter;

@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 import net.calebscode.mythlands.dto.ItemInstanceDTO;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
@@ -22,7 +21,6 @@ import net.calebscode.mythlands.messages.in.MoveInventoryMessage;
 import net.calebscode.mythlands.messages.in.SpendSkillPointMessage;
 import net.calebscode.mythlands.messages.in.UseInventoryMessage;
 import net.calebscode.mythlands.messages.out.CharacterListMessage;
-import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
 import net.calebscode.mythlands.messages.out.ServerMessage;
 import net.calebscode.mythlands.service.MythlandsGameService;
@@ -114,8 +112,7 @@ public class MythlandsCharacterController {
 	@MessageMapping("/character.equip")
 	public void equipItem(EquipMessage equip, Principal principal) {
 		try {
-			var active = userService.getActiveCharacter(principal.getName());
-			var changes = gameService.equipItem(active.id, equip.equipSlot, equip.invSlot);
+			var changes = gameService.equipItem(principal.getName(), equip.equipSlot, equip.invSlot);
 			if(changes.size() > 0) {
 				messenger.convertAndSendToUser(principal.getName(), "/local/inventory", 
 						gson.toJson(changes));	

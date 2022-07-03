@@ -1,6 +1,8 @@
 package net.calebscode.mythlands.core;
 
-public enum Skill {
+public enum StatType {
+	
+	// Skill point stats
 	STAMINA,
 	SPIRIT,
 	STRENGTH,
@@ -9,4 +11,12 @@ public enum Skill {
 	TOUGHNESS,
 	AVOIDANCE,
 	RESISTANCE,
+	
+	// Other stats
+	MAX_HEALTH,
+	MAX_MANA,
+	GOLD_GAIN,
+	XP_GAIN,
+	ATTACK_COOLDOWN,
+	
 }

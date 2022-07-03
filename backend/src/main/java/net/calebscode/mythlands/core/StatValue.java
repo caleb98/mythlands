@@ -30,16 +30,13 @@ public class StatValue {
 	private double multiplier;
 
 	public StatValue() {
-		base = 0;
-		additional = 0;
-		increase = 1;
-		multiplier = 1;
+		this(0);
 	}
 	
 	public StatValue(int base) {
 		this.base = base;
 		additional = 0;
-		increase = 1;
+		increase = 0;
 		multiplier = 1;
 	}
 	
@@ -72,11 +69,11 @@ public class StatValue {
 	}
 	
 	public void addIncrease(double amount) {
-		increase += (1 + amount);
+		increase += amount;
 	}
 	
 	public void removeIncrease(double amount) {
-		increase -= (1 + amount);
+		increase -= amount;
 	}
 	
 	public double getMultiplier() {
@@ -92,7 +89,8 @@ public class StatValue {
 	}
 	
 	public double getValue() {
-		return (base + additional) * Math.max(0, increase) * multiplier;
+		double flat = base + additional;
+		return flat * (1 + increase) * multiplier;
 	}
 	
 }

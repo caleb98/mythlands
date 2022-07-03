@@ -1,10 +1,10 @@
 package net.calebscode.mythlands.messages.in;
 
-import net.calebscode.mythlands.core.Skill;
+import net.calebscode.mythlands.core.StatType;
 
 public class SpendSkillPointMessage {
 
-	public final Skill skill;
+	public final StatType skill;
 	
 	public SpendSkillPointMessage() {
 		skill = null;

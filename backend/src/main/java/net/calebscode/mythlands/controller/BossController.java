@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import net.calebscode.mythlands.dto.BossDTO;
 import net.calebscode.mythlands.exception.MythlandsServiceException;
 import net.calebscode.mythlands.messages.in.AttackMessage;
-import net.calebscode.mythlands.messages.out.CharacterUpdateMessage;
 import net.calebscode.mythlands.messages.out.ErrorMessage;
 import net.calebscode.mythlands.service.MythlandsGameService;
 
