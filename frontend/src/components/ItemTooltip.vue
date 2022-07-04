@@ -7,6 +7,21 @@
 		<div class="row">
 			<div class="col-auto">{{itemInstance.template.name}}</div>
 		</div>
+	
+		<!-- Type/Slot -->
+		<div class="row item-type clean-text">
+			<div class="col-auto">{{itemType}}</div>
+		</div>
+
+
+		<!-- Item Affixes  -->
+		<div class="row" v-if="itemInstance.affixes">
+			<div class="col-auto">
+				<ul class="affix-list clean-text m-0 p-1">
+					<li v-for="affix in itemInstance.affixes" :key="affix.id">{{affix.description}}</li>
+				</ul>
+			</div>
+		</div>
 
 		<!-- Item Desc -->
 		<div class="row mt-2 clean-text fst-italic">
@@ -49,6 +64,16 @@ export default {
 				borderColor: this.rarityColor,
 				color: this.rarityColor
 			}
+		},
+
+		itemType() {
+			if(this.itemInstance.template.slot) {
+				let slot = this.itemInstance.template.slot;
+				return slot.charAt(0).toUpperCase() + slot.slice(1).toLowerCase();
+			}
+			else {
+				return this.itemInstance.type;
+			}
 		}
 	},
 }
@@ -64,5 +89,16 @@ export default {
 	border-style: solid;
 	border-width: 3px;
 	border-radius: 3px;
+}
+
+.item-type {
+	color: white;
+	font-size: 14px;
+}
+
+.affix-list {
+	color: white;
+	list-style-type: none;
+	list-style-position: inside;
 }
 </style>
