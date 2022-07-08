@@ -10,7 +10,7 @@ import javax.persistence.Table;
 import net.mythlands.core.MythlandsUser;
 
 @Entity
-@Table(name = "chat_reports")
+@Table(name = "chat_report")
 public class ChatReport {
 
 	@Id

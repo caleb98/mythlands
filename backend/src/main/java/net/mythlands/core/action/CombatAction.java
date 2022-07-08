@@ -9,8 +9,10 @@ import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.MapKeyColumn;
+import javax.persistence.Table;
 
 @Entity
+@Table(name = "combat_action")
 public class CombatAction {
 	
 	@Id
@@ -19,6 +21,7 @@ public class CombatAction {
 	@ElementCollection
 	@CollectionTable(name = "combat_action_data")
 	@MapKeyColumn(name = "data_key")
+	@Column(name = "data_value")
 	private Map<String, String> actionData;
 	
 	@Column(nullable = false)

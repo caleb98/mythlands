@@ -18,7 +18,7 @@ import javax.persistence.Table;
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "item_type", discriminatorType = DiscriminatorType.STRING)
 @DiscriminatorValue("Item")
-@Table(name = "item_templates")
+@Table(name = "item_template")
 public class ItemTemplate {
 
 	@Id

@@ -8,13 +8,15 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import net.mythlands.core.MythlandsUser;
 
 @Entity
-@Table(name = "chat_groups")
+@Table(name = "chat_group")
 public class ChatGroup {
 
 	@Id
@@ -25,6 +27,10 @@ public class ChatGroup {
 	private String groupName;
 	
 	@OneToMany
+	@JoinTable(
+			name = "chat_group_user",
+			inverseJoinColumns = @JoinColumn(name = "user_id")
+	)
 	private Set<MythlandsUser> users = new HashSet<>();
 
 	public String getGroupName() {

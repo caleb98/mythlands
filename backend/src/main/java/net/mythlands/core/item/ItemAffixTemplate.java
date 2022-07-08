@@ -6,7 +6,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "affix_templates")
+@Table(name = "item_affix_template")
 public class ItemAffixTemplate {
 
 	@Id

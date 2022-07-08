@@ -18,7 +18,7 @@ import org.hibernate.annotations.GenericGenerator;
 @Entity
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorFormula("(select item_templates.item_type from item_templates where item_templates.id = item_template)")
-@Table(name = "item_instances")
+@Table(name = "item_instance")
 public abstract class ItemInstance {
 
 	@Id

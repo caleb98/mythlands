@@ -14,6 +14,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapKeyColumn;
 import javax.persistence.OneToOne;
@@ -28,7 +29,7 @@ import net.mythlands.core.item.EquippableItemTemplate;
 import net.mythlands.core.item.ItemInstance;
 
 @Entity
-@Table(name = "characters")
+@Table(name = "mythlands_character")
 public class MythlandsCharacter {
 
 	@Id
@@ -51,11 +52,14 @@ public class MythlandsCharacter {
 	@ManyToOne
 	@JoinColumn(name = "owner_id")
 	private MythlandsUser owner;
-	
-	@ElementCollection
-	@CollectionTable(name = "character_inventory")
-	@MapKeyColumn(name = "inventory_slot")
+
 	@Cascade(CascadeType.ALL)
+	@ElementCollection
+	@MapKeyColumn(name = "inventory_slot")
+	@JoinTable(
+			name = "character_inventory",
+			inverseJoinColumns = @JoinColumn(name = "item_instance_id")			
+	)
 	private Map<Integer, ItemInstance> inventory;
 	
 	@Column(nullable = false) 

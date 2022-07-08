@@ -6,6 +6,8 @@ import java.util.List;
 import javax.persistence.CascadeType;
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 
 @Entity
@@ -13,6 +15,11 @@ import javax.persistence.ManyToMany;
 public class EquippableItemInstance extends ItemInstance {
 
 	@ManyToMany(cascade = CascadeType.ALL)
+	@JoinTable(
+			name = "item_instance_affixes",
+			joinColumns = @JoinColumn(name = "item_instance_id"),
+			inverseJoinColumns = @JoinColumn(name = "item_affix_id")
+	)
 	private List<ItemAffixInstance> affixes;
 	
 	protected EquippableItemInstance() {}
