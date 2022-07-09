@@ -15,6 +15,11 @@
 			</div>
 		</div>
 
+		<div class="recharge-overlay" :id="elementId + '-recharge-overlay'"
+			:style="{ 'animation-duration': cooldownLength + 's' }"
+			:class="{ 'cooldown-active': onCooldown }">
+		</div>
+
 		<div :id="'item-tooltip-slot-' + itemSlot">
 			<ItemTooltip v-if="hovering && displayItem"
 				:itemInstance="displayItem" 
@@ -44,7 +49,8 @@ export default {
 		return {
 			hovering: false,
 			tooltipX: 0,
-			tooltipY: 0
+			tooltipY: 0,
+			onCooldown: false,
 		}
 	},
 
@@ -79,6 +85,19 @@ export default {
 
 		elementId() {
 			return 'item-slot-' + this.itemSlot;
+		},
+
+		hasCooldown() {
+			return this.displayItem ? this.displayItem.cooldownFinish : false;
+		},
+
+		cooldownLength() {
+			if(this.hasCooldown) {
+				return (this.displayItem.cooldownFinish - this.displayItem.cooldownStart) / 1000;
+			}
+			else {
+				return 0;
+			}
 		}
 	},
 
@@ -169,7 +188,7 @@ export default {
 		},
 
 		click(event) {
-			if(event.button == 2) {
+			if(event.button == 2 && !this.onCooldown) {
 				WS.publish({
 					destination: "/game/character.useinventory",
 					body: JSON.stringify({
@@ -195,13 +214,24 @@ export default {
 				default: return null;
 			}
 		}
+	},
 
+	watch: {
+		displayItem() {
+			if(this.hasCooldown && (Date.now() < this.displayItem.cooldownFinish)) {
+				this.onCooldown = true;
+				setTimeout(() => {
+					this.onCooldown = false;
+				}, this.displayItem.cooldownFinish - Date.now());
+			}
+		}
 	}
 }
 </script>
 
 <style scoped>
 .item-icon-container {
+	position: relative;
 	border: 1px solid black;
 	border-radius: 3px;
 	background-color: #bb9255;
@@ -229,5 +259,31 @@ export default {
 	right: -5px;
 	color: yellow;
 	user-select: none;
+}
+
+.recharge-overlay {
+	position: absolute;
+	background-color: rgba(236, 58, 58, 0.575);
+	width: 100%;
+	height: 0%;
+	top: 0%;
+	left: 0%;
+	border-radius: 3px;
+}
+
+.cooldown-active {
+	animation-name: cooldown;
+	animation-timing-function: linear;
+}
+
+@keyframes cooldown {
+	from { 
+		height: 100%;
+		top: 0%;
+	}
+	to { 
+		height: 0%;
+		top: 100%;
+	}
 }
 </style>

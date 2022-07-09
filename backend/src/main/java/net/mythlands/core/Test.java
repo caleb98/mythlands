@@ -44,7 +44,8 @@ public class Test implements CommandLineRunner {
 					"Lesser Healing Potion",
 					"/item/consumable/lesser_healing_potion.png",
 					"A simple potion that restores 5 health when used.",
-					ItemRarity.COMMON, 20, 
+					ItemRarity.COMMON, 20,
+					5000,
 					"HealingPotion_Lesser"
 			);
 		} catch (MythlandsServiceException e) {
@@ -57,7 +58,8 @@ public class Test implements CommandLineRunner {
 					"Lesser Mana Potion",
 					"/item/consumable/lesser_mana_potion.png",
 					"A simple potion that restores 5 mana when used.",
-					ItemRarity.COMMON, 20, 
+					ItemRarity.COMMON, 20,
+					5000,
 					"ManaPotion_Lesser"
 			);
 		} catch (MythlandsServiceException e) {
@@ -123,22 +125,24 @@ public class Test implements CommandLineRunner {
 		try {
 			
 			if(gameService.getInventory(1).size() == 0) {
-				var strData = new HashMap<String, String>();
-				strData.put("stat", "STRENGTH");
-				strData.put("additional", "5");
+//				var strData = new HashMap<String, String>();
+//				strData.put("stat", "STRENGTH");
+//				strData.put("additional", "5");
+//				
+//				var stmData = new HashMap<String, String>();
+//				stmData.put("stat", "STAMINA");
+//				stmData.put("additional", "5");
+//				
+//				var affixData = new HashMap<String, Map<String, String>>();
+//				affixData.put("StrengthAffix", strData);
+//				affixData.put("StaminaAffix", stmData);
+//				
+//				EquippableItemInstanceDTO dto = gameService.createEquippableItemInstance(
+//						"LeatherArmor", 
+//						affixData
+//				);
 				
-				var stmData = new HashMap<String, String>();
-				stmData.put("stat", "STAMINA");
-				stmData.put("additional", "5");
-				
-				var affixData = new HashMap<String, Map<String, String>>();
-				affixData.put("StrengthAffix", strData);
-				affixData.put("StaminaAffix", stmData);
-				
-				EquippableItemInstanceDTO dto = gameService.createEquippableItemInstance(
-						"LeatherArmor", 
-						affixData
-				);
+				var dto = gameService.createConsumableItemInstance("LesserHealingPotion", 20);
 				
 				gameService.addInventoryItem(1, dto.id);
 			}

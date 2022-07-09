@@ -530,13 +530,21 @@ public class MythlandsGameService {
 		
 		// Use function is based on item type
 		ItemTemplate template = use.getTemplate();
-		if(template instanceof ConsumableItemTemplate) {
-			var consumable = (ConsumableItemTemplate) template;
-			CombatAction onConsume = consumable.getOnConsume();
+		if(use instanceof ConsumableItemInstance) {
+			
+			// Check item cooldown
+			var consumable = (ConsumableItemInstance) use;
+			if(consumable.isOnCooldown()) {
+				throw new MythlandsServiceException("That item is still on cooldown.");
+			}
+			
+			// Use the ability
+			CombatAction onConsume = consumable.getConsumableItemTemplate().getOnConsume();
 			CombatActionFunction function = getCombatActionFunction(onConsume.getFunctionName());
-			// TODO: include boss
+			// TODO: include boss (thread safety!)
 			function.execute(new CombatContext(username, heroId, null), onConsume.getActionData());
-			use.modifyCount(-1);
+			consumable.modifyCount(-1);
+			consumable.triggerCooldown();
 			
 			// Delete item if out
 			if(use.getCount() == 0) {
@@ -782,7 +790,7 @@ public class MythlandsGameService {
 	
 	@Transactional
 	public ConsumableItemTemplateDTO createConsumableItemTemplate(
-			String id, String name, String icon, String desc, ItemRarity rarity, int stackSize, String actionId) 
+			String id, String name, String icon, String desc, ItemRarity rarity, int stackSize, long cooldownTime, String actionId) 
 			throws MythlandsServiceException {
 	
 		// Check if an identical template already exists.
@@ -793,7 +801,7 @@ public class MythlandsGameService {
 		}
 		
 		var action = getCombatAction(actionId);
-		ConsumableItemTemplate template = new ConsumableItemTemplate(id, name, icon, desc, rarity, stackSize, action);
+		ConsumableItemTemplate template = new ConsumableItemTemplate(id, name, icon, desc, rarity, stackSize, cooldownTime, action);
 		template = templateRepository.save(template);
 		
 		return new ConsumableItemTemplateDTO(template);
