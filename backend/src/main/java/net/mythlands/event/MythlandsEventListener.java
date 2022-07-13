@@ -38,18 +38,6 @@ public class MythlandsEventListener {
 	
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-	public void characterStatsUpdateListener(CharacterStatsUpdateEvent event) {
-		CharacterStatsRO data = new CharacterStatsRO(event.character);
-		TimestampedRO<CharacterStatsRO> response = new TimestampedRO<>(data);
-		messenger.convertAndSendToUser(
-				event.character.owner.username,
-				"/local/character.stats",
-				response
-		);
-	}	
-	
-	@Async
-	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void bossUpdateListener(BossUpdateEvent event) {
 		messenger.convertAndSend(
 				"/global/boss.status",
@@ -62,10 +50,22 @@ public class MythlandsEventListener {
 	public void cooldownUpdateListener(CooldownUpdateEvent event) {
 		messenger.convertAndSendToUser(
 				event.username,
-				"/local/cooldown",
+				"/local/character.cooldown",
 				new CooldownMessage(event.cooldown)
 		);
 	}
+	
+	@Async
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+	public void characterStatsUpdateListener(CharacterStatsUpdateEvent event) {
+		CharacterStatsRO data = new CharacterStatsRO(event.character);
+		TimestampedRO<CharacterStatsRO> response = new TimestampedRO<>(data);
+		messenger.convertAndSendToUser(
+				event.character.owner.username,
+				"/local/character.stats",
+				response
+		);
+	}	
 	
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
@@ -74,7 +74,7 @@ public class MythlandsEventListener {
 		TimestampedRO<CharacterEffectsRO> response = new TimestampedRO<>(data);
 		messenger.convertAndSendToUser(
 				event.character.owner.username, 
-				"/local/statuseffect",
+				"/local/character.effects",
 				response
 		);
 	}

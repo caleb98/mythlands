@@ -60,7 +60,7 @@
 					</div>
 				</div>
 				<div class="col-auto p-0">
-					<div class="mb-2"><b>Level {{activeCharacter.level}}</b></div>
+					<div class="mb-2"><b>Level {{characterStats.level}}</b></div>
 					<img src="/img/hero.png" width="64" height="64" class="pixel-image">
 				</div>
 				<div class="col-auto p-0">
@@ -68,59 +68,59 @@
 						<tbody>
 							<tr>
 								<td class="text-start"><b>Stamina</b></td>
-								<td class="text-end">{{activeCharacter.stamina}}</td>
+								<td class="text-end">{{characterStats.stamina}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('STAMINA')">add</span>
 								</td>
 
 								<td class="text-start ps-4"><b>Spirit</b></td>
-								<td class="text-end">{{activeCharacter.spirit}}</td>
+								<td class="text-end">{{characterStats.spirit}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('SPIRIT')">add</span>
 								</td>
 							</tr>
 							<tr>
 								<td class="text-start"><b>Strength</b></td>
-								<td class="text-end">{{activeCharacter.strength}}</td>
+								<td class="text-end">{{characterStats.strength}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('STRENGTH')">add</span>
 								</td>
 
 								<td class="text-start ps-4"><b>Toughness</b></td>
-								<td class="text-end">{{activeCharacter.toughness}}</td>
+								<td class="text-end">{{characterStats.toughness}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('TOUGHNESS')">add</span>
 								</td>
 							</tr>
 							<tr>
 								<td class="text-start"><b>Dexterity</b></td>
-								<td class="text-end">{{activeCharacter.dexterity}}</td>
+								<td class="text-end">{{characterStats.dexterity}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('DEXTERITY')">add</span>
 								</td>
 
 								<td class="text-start ps-4"><b>Avoidance</b></td>
-								<td class="text-end">{{activeCharacter.avoidance}}</td>
+								<td class="text-end">{{characterStats.avoidance}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('AVOIDANCE')">add</span>
 								</td>
 							</tr>
 							<tr>
 								<td class="text-start"><b>Attunement</b></td>
-								<td class="text-end">{{activeCharacter.attunement}}</td>
+								<td class="text-end">{{characterStats.attunement}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('ATTUNEMENT')">add</span>
 								</td>
 
 								<td class="text-start ps-4"><b>Resistance</b></td>
-								<td class="text-end">{{activeCharacter.resistance}}</td>
+								<td class="text-end">{{characterStats.resistance}}</td>
 								<td v-if="hasSkillPoints" class="m-0 p-0">
 									<span class="material-icons-round md-18 btn-skill clickable" @click="spendSkillPoint('RESISTANCE')">add</span>
 								</td>
 							</tr>
 							<tr v-if="hasSkillPoints">
 								<td colspan="6" class="pb-0">
-									<span class="text-skill-points ps-4 pe-4 pt-1 pb-1">{{activeCharacter.skillPoints}} Skill Point{{activeCharacter.skillPoints > 1 ? 's' : ''}}</span>
+									<span class="text-skill-points ps-4 pe-4 pt-1 pb-1">{{characterStats.skillPoints}} Skill Point{{characterStats.skillPoints > 1 ? 's' : ''}}</span>
 								</td>
 							</tr>
 						</tbody>
@@ -197,6 +197,41 @@ export default {
 			userInfo: null,
 			cooldownTime: 0,
 			showCharacterCreator: false,
+
+			characterInfo: { 
+				timestamp: 0,
+			},
+			characterStats: { 
+				timestamp: 0,
+				
+				attackReady: 0,
+				skillPoints: 0,
+
+				level: 0,
+				xp: 0,
+				
+				maxHealth: 0,
+				currentHealth: 0,
+				maxMana: 0,
+				currentMana: 0,
+
+				stamina: 0,
+				spirit: 0,
+				strength: 0,
+				dexterity: 0,
+				attunement: 0,
+				toughness: 0,
+				avoidance: 0,
+				resistance: 0,
+
+				goldGain: 0,
+				xpGain: 0,
+				attackCooldown: 0,
+			},
+			characterEffects: { 
+				timestamp: 0
+			},
+
 		}
 	},
 	props: {
@@ -272,7 +307,7 @@ export default {
 			})
 			// This is done server side, but we locally subtract just to
 			// make the UI snappier and prevent accidental message sends.
-			this.activeCharacter.skillPoints -= 1;
+			this.characterStats.skillPoints -= 1;
 		}
 	},
 
@@ -291,7 +326,7 @@ export default {
 		},
 
 		xpToLevel() {
-			return 10 + (10 * (this.activeCharacter.level - 1));
+			return 10 + (10 * (this.characterStats.level - 1));
 		},
 
 		fullCharacterName() {
@@ -299,27 +334,27 @@ export default {
 		},
 
 		healthString() {
-			return parseFloat(this.activeCharacter.currentHealth.toFixed(2)) + " / " + this.activeCharacter.maxHealth;
+			return parseFloat(this.characterStats.currentHealth.toFixed(2)) + " / " + this.characterStats.maxHealth;
 		},
 
 		manaString() {
-			return parseFloat(this.activeCharacter.currentMana.toFixed(2)) + " / " + this.activeCharacter.maxMana;
+			return parseFloat(this.characterStats.currentMana.toFixed(2)) + " / " + this.characterStats.maxMana;
 		},
 
 		xpString() {
-			return this.activeCharacter.xp + " / " + this.xpToLevel;
+			return this.characterStats.xp + " / " + this.xpToLevel;
 		},
 
 		healthPercent() {
-			return Math.round(this.activeCharacter.currentHealth / this.activeCharacter.maxHealth * 100);
+			return Math.round(this.characterStats.currentHealth / this.characterStats.maxHealth * 100);
 		},
 
 		manaPercent() {
-			return Math.round(this.activeCharacter.currentMana / this.activeCharacter.maxMana * 100);
+			return Math.round(this.characterStats.currentMana / this.characterStats.maxMana * 100);
 		},
 
 		xpPercent() {
-			return Math.round(this.activeCharacter.xp / this.xpToLevel * 100);
+			return Math.round(this.characterStats.xp / this.xpToLevel * 100);
 		},
 
 		showHealthCap() {
@@ -335,7 +370,7 @@ export default {
 		},
 
 		hasSkillPoints() {
-			return this.activeCharacter.skillPoints > 0;
+			return this.characterStats.skillPoints > 0;
 		}
 	},
 
@@ -360,16 +395,19 @@ export default {
 		this.loadUserCharacters();
 		this.loadInventory();
 
-		this.characterStatusSub = WS.watch("/user/local/character")
+		this.characterStatsSub = WS.watch("/user/local/character.stats")
 			.pipe(map(message => {
 				return JSON.parse(message.body);
 			}))
 			.subscribe(body => {
-				var character = this.activeCharacter;
-				Object.assign(character, ...body.updates);
+				console.log(JSON.stringify(body, null, 2));
+				if(body.timestamp > this.characterStats.timestamp) {
+					this.characterStats.timestamp = body.timestamp;
+					Object.assign(this.characterStats, body.data);
+				}
 			});
 
-		this.cooldownSub = WS.watch("/user/local/cooldown")
+		this.cooldownSub = WS.watch("/user/local/character.cooldown")
 			.pipe(map(message => {
 				return JSON.parse(message.body)
 			}))
@@ -412,7 +450,7 @@ export default {
 	},
 
 	unmounted() {
-		this.characterStatusSub.unsubscribe();
+		this.characterStatsSub.unsubscribe();
 		this.cooldownSub.unsubscribe();
 		this.inventorySub.unsubscribe();
 		this.statusSub.unsubscribe();

@@ -10,7 +10,6 @@ public class StatusEffectInstanceDTO {
 	public final int id;
 	public final StatusEffectTemplateDTO template;
 	public final Map<String, String> data;
-	public final MythlandsCharacterDTO character;
 	
 	public final long startTime;
 	public final long finishTime;
@@ -23,8 +22,6 @@ public class StatusEffectInstanceDTO {
 		for(String key : instance.getData().keySet()) {
 			data.put(key, instance.getData().get(key));
 		}
-		
-		character = new MythlandsCharacterDTO(instance.getCharacter());
 		
 		startTime = instance.getStartTime();
 		finishTime = instance.getFinishTime();

@@ -140,15 +140,15 @@ public class MythlandsGameService {
 		}
 
 		long now = System.currentTimeMillis();
-		var data = new HashMap<String, String>();
-		data.put("stat", "STRENGTH");
-		data.put("additional", "5");
-		addStatusEffectInstance(
-				"TestEffect", 
-				hero, 
-				data, 
-				now
-		);
+//		var data = new HashMap<String, String>();
+//		data.put("stat", "STRENGTH");
+//		data.put("additional", "5");
+//		addStatusEffectInstance(
+//				"TestEffect", 
+//				hero, 
+//				data, 
+//				now
+//		);
 		
 		// Do boss calculations
 		synchronized(bossLock) {
@@ -515,6 +515,8 @@ public class MythlandsGameService {
 			throw new MythlandsServiceException("Stat \"" + skill + "\" is not a valid skill point stat.");
 		
 		}
+		
+		eventPublisher.publishEvent(new CharacterStatsUpdateEvent(new MythlandsCharacterDTO(character)));
 	}
 	
 	/**
