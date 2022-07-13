@@ -1,25 +1,41 @@
 package net.mythlands.dto;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import net.mythlands.core.MythlandsCharacter;
+import net.mythlands.core.item.ConsumableItemInstance;
+import net.mythlands.core.item.EquippableItemInstance;
 
 public class MythlandsCharacterDTO {
 	
 	public final int id;
 	
+	// Character Info
 	public final String firstName;
 	public final String lastName;
-	public final String ownerName;
-	public final int level;
-	public final int xp;
 	public final boolean isDeceased;
+	public final MythlandsUserDTO owner;	
+	
+	// Character Inventory
+	public final Map<Integer, ItemInstanceDTO> inventory;
 	public final int inventoryCapacity;
 	
-	public final ItemInstanceDTO weaponItem;
-	public final ItemInstanceDTO armorItem;
-	public final ItemInstanceDTO trinketItem;
+	// Character Equipment
+	public final EquippableItemInstanceDTO weaponItem;
+	public final EquippableItemInstanceDTO armorItem;
+	public final EquippableItemInstanceDTO trinketItem;
 	
-	public final int skillPoints;
+	// Character Effects
+	public final List<StatusEffectInstanceDTO> effects;
+	
+	// Stats
 	public final long attackReady;
+	public final int skillPoints;
+	
+	public final int level;
+	public final int xp;
 	
 	public final double maxHealth;
 	public final double currentHealth;
@@ -44,18 +60,39 @@ public class MythlandsCharacterDTO {
 		
 		firstName = hc.getFirstName();
 		lastName = hc.getLastName();
-		ownerName = hc.getOwner().getUsername();
 		level = hc.getLevel();
 		xp = hc.getXp();
 		isDeceased = hc.isDeceased();
+		
+		attackReady = hc.getAttackReady();
+		skillPoints = hc.getSkillPoints();
+		
+		owner = new MythlandsUserDTO(hc.getOwner());
+		
+		inventory = new HashMap<>();
+		for(int slot : hc.getInventory().keySet()) {
+			var item = hc.getInventory().get(slot);
+			if(item instanceof EquippableItemInstance) {
+				var equippable = (EquippableItemInstance) item;
+				inventory.put(slot, new EquippableItemInstanceDTO(equippable));
+			}
+			else if(item instanceof ConsumableItemInstance) {
+				var consumable = (ConsumableItemInstance) item;
+				inventory.put(slot, new ConsumableItemInstanceDTO(consumable));
+			}
+			else {
+				throw new RuntimeException("Invalid item class: " + item.getClass().getSimpleName());
+			}
+		}
 		inventoryCapacity = hc.getInventoryCapacity();
 		
 		weaponItem = hc.hasWeaponItem() ? new EquippableItemInstanceDTO(hc.getWeaponItem()) : null;
 		armorItem = hc.hasArmorItem() ? new EquippableItemInstanceDTO(hc.getArmorItem()) : null;
 		trinketItem = hc.hasTrinketItem() ? new EquippableItemInstanceDTO(hc.getTrinketItem()) : null;
 		
-		skillPoints = hc.getSkillPoints();
-		attackReady = hc.getAttackReady();
+		effects = hc.getStatusEffects().stream()
+					.map(StatusEffectInstanceDTO::new)
+					.toList();
 		
 		maxHealth = hc.getMaxHealth();
 		currentHealth = hc.getCurrentHealth();

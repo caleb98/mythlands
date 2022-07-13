@@ -11,12 +11,16 @@ import com.google.gson.Gson;
 
 import net.mythlands.dto.BossDTO;
 import net.mythlands.messages.out.BossDiedMessage;
-import net.mythlands.messages.out.CharacterUpdateMessage;
 import net.mythlands.messages.out.CooldownMessage;
+import net.mythlands.response.CharacterEffectsRO;
+import net.mythlands.response.CharacterStatsRO;
+import net.mythlands.response.TimestampedRO;
+import net.mythlands.service.MythlandsGameService;
 
 @Component
-public class DataUpdateListener {
+public class MythlandsEventListener {
 	
+	@Autowired private MythlandsGameService gameService;
 	@Autowired private SimpMessagingTemplate messenger;
 	@Autowired private Gson gson;
 
@@ -34,11 +38,13 @@ public class DataUpdateListener {
 	
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-	public void characterUpdateListener(CharacterUpdateEvent event) {
+	public void characterStatsUpdateListener(CharacterStatsUpdateEvent event) {
+		CharacterStatsRO data = new CharacterStatsRO(event.character);
+		TimestampedRO<CharacterStatsRO> response = new TimestampedRO<>(data);
 		messenger.convertAndSendToUser(
-				event.username,
-				"/local/character",
-				gson.toJson(new CharacterUpdateMessage(event.updates))
+				event.character.owner.username,
+				"/local/character.stats",
+				response
 		);
 	}	
 	
@@ -59,6 +65,18 @@ public class DataUpdateListener {
 				"/local/cooldown",
 				new CooldownMessage(event.cooldown)
 		);
-	}	
+	}
+	
+	@Async
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+	public void statusEffectUpdateListener(CharacterEffectsUpdateEvent event) {
+		CharacterEffectsRO data = new CharacterEffectsRO(event.character);
+		TimestampedRO<CharacterEffectsRO> response = new TimestampedRO<>(data);
+		messenger.convertAndSendToUser(
+				event.character.owner.username, 
+				"/local/statuseffect",
+				response
+		);
+	}
 	
 }

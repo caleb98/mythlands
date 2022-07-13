@@ -41,7 +41,7 @@ public class ChatController {
 			}
 			
 			ChatMessageDTO messageDto = chatService.logMessage(user.id, message.groupId, cleanedMessage);
-			Set<MythlandsUserDTO> sendToUsers = chatService.getGroupUsers(messageDto.groupId);
+			Set<MythlandsUserDTO> sendToUsers = chatService.getGroupUsers(messageDto.group.id);
 			
 			for(MythlandsUserDTO sendTo : sendToUsers) {
 				messenger.convertAndSendToUser(

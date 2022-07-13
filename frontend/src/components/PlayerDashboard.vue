@@ -400,12 +400,22 @@ export default {
 					}
 				}
 			});
+		
+		this.statusSub = WS.watch("/user/local/statuseffect")
+			.pipe(map(message => {
+				console.log(message.body);
+				return JSON.parse(message.body);
+			}))
+			.subscribe(effects => {
+				this.activeCharacter.effects = effects;
+			})
 	},
 
 	unmounted() {
 		this.characterStatusSub.unsubscribe();
 		this.cooldownSub.unsubscribe();
 		this.inventorySub.unsubscribe();
+		this.statusSub.unsubscribe();
 	}
 }
 </script>

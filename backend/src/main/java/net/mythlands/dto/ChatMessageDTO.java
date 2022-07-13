@@ -8,19 +8,15 @@ public class ChatMessageDTO {
 
 	public final int id;
 	public final Instant timestamp;
-	public final int userId;
-	public final String username;
-	public final int groupId;
-	public final String groupName;
+	public final MythlandsUserDTO user;
+	public final ChatGroupDTO group;
 	public final String message;
 	
 	public ChatMessageDTO(ChatMessage chatMessage) {
 		id = chatMessage.getId();
 		timestamp = Instant.from(chatMessage.getTimestamp());
-		userId = chatMessage.getUser().getId();
-		username = chatMessage.getUser().getUsername();
-		groupId = chatMessage.getGroup().getId();
-		groupName = chatMessage.getGroup().getGroupName();
+		user = new MythlandsUserDTO(chatMessage.getUser());
+		group = new ChatGroupDTO(chatMessage.getGroup());
 		message = chatMessage.getMessage();
 	}
 	

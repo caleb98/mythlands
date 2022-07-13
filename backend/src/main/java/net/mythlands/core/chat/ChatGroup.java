@@ -24,7 +24,7 @@ public class ChatGroup {
 	private Integer id;
 	
 	@Column(nullable = false)
-	private String groupName;
+	private String name;
 	
 	@OneToMany
 	@JoinTable(
@@ -34,11 +34,11 @@ public class ChatGroup {
 	private Set<MythlandsUser> users = new HashSet<>();
 
 	public String getGroupName() {
-		return groupName;
+		return name;
 	}
 
 	public void setGroupName(String groupName) {
-		this.groupName = groupName;
+		this.name = groupName;
 	}
 
 	public Set<MythlandsUser> getUsers() {

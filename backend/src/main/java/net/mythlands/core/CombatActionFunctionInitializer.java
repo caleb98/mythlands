@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import com.google.gson.JsonObject;
 
 import net.mythlands.core.action.CombatContext;
-import net.mythlands.event.CharacterUpdateEvent;
+import net.mythlands.event.CharacterStatsUpdateEvent;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.service.MythlandsGameService;
 
@@ -43,9 +43,9 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 */
 	private void healPlayer(CombatContext context, Map<String, String> data) {
 		try {
-			JsonObject update = gameService.gainHealth(context.username, Double.parseDouble(data.get(("amount"))));
-			if(update.size() > 0) {
-				eventPublisher.publishEvent(new CharacterUpdateEvent(context.username, update));
+			boolean updated = gameService.modifyHealth(context.hero.id, Double.parseDouble(data.get(("amount"))));
+			if(updated) {
+				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
@@ -65,9 +65,9 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 */
 	private void restorePlayerMana(CombatContext context, Map<String, String> data) {
 		try {
-			JsonObject update = gameService.gainMana(context.username, Double.parseDouble(data.get(("amount"))));
-			if(update.size() > 0) {
-				eventPublisher.publishEvent(new CharacterUpdateEvent(context.username, update));
+			boolean updated = gameService.modifyMana(context.hero.id, Double.parseDouble(data.get(("amount"))));
+			if(updated) {
+				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
@@ -104,9 +104,9 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			JsonObject changes = gameService.addStatModification(context.username, stat, additional, increase, multiplier);
-			if(changes.size() > 0) {
-				eventPublisher.publishEvent(new CharacterUpdateEvent(context.username, changes));
+			boolean updated = gameService.addStatModification(context.hero.id, stat, additional, increase, multiplier);
+			if(updated) {
+				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
@@ -143,9 +143,9 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			JsonObject changes = gameService.removeStatModification(context.username, stat, additional, increase, multiplier);
-			if(changes.size() > 0) {
-				eventPublisher.publishEvent(new CharacterUpdateEvent(context.username, changes));
+			boolean updated = gameService.removeStatModification(context.hero.owner.username, stat, additional, increase, multiplier);
+			if(updated) {
+				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();

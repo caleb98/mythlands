@@ -1,6 +1,7 @@
 package net.mythlands.service;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,7 +21,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 import net.mythlands.core.Boss;
 import net.mythlands.core.ContributionInfo;
@@ -31,6 +31,8 @@ import net.mythlands.core.StatType;
 import net.mythlands.core.action.CombatAction;
 import net.mythlands.core.action.CombatActionFunction;
 import net.mythlands.core.action.CombatContext;
+import net.mythlands.core.effect.StatusEffectInstance;
+import net.mythlands.core.effect.StatusEffectTemplate;
 import net.mythlands.core.item.ConsumableItemInstance;
 import net.mythlands.core.item.ConsumableItemTemplate;
 import net.mythlands.core.item.EquippableItemInstance;
@@ -50,9 +52,12 @@ import net.mythlands.dto.EquippableItemTemplateDTO;
 import net.mythlands.dto.ItemAffixTemplateDTO;
 import net.mythlands.dto.ItemInstanceDTO;
 import net.mythlands.dto.MythlandsCharacterDTO;
+import net.mythlands.dto.StatusEffectInstanceDTO;
+import net.mythlands.dto.StatusEffectTemplateDTO;
 import net.mythlands.event.BossDiedEvent;
 import net.mythlands.event.BossUpdateEvent;
-import net.mythlands.event.CharacterUpdateEvent;
+import net.mythlands.event.CharacterEffectsUpdateEvent;
+import net.mythlands.event.CharacterStatsUpdateEvent;
 import net.mythlands.event.CooldownUpdateEvent;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.repository.MythlandsAffixRepository;
@@ -60,6 +65,8 @@ import net.mythlands.repository.MythlandsCharacterRepository;
 import net.mythlands.repository.MythlandsCombatActionRepository;
 import net.mythlands.repository.MythlandsItemRepository;
 import net.mythlands.repository.MythlandsItemTemplateRepository;
+import net.mythlands.repository.MythlandsStatusEffectRepository;
+import net.mythlands.repository.MythlandsStatusEffectTemplateRepository;
 import net.mythlands.repository.MythlandsUserRepository;
 
 @Service
@@ -71,6 +78,8 @@ public class MythlandsGameService {
 	@Autowired private MythlandsCharacterRepository characterRepository;	
 	@Autowired private MythlandsAffixRepository affixRepository;
 	@Autowired private MythlandsUserRepository userRepository;
+	@Autowired private MythlandsStatusEffectRepository statusRepository;
+	@Autowired private MythlandsStatusEffectTemplateRepository statusTemplateRepository;
 	
 	private HashMap<String, CombatActionFunction> functionMap = new HashMap<>();
 	
@@ -94,10 +103,32 @@ public class MythlandsGameService {
 	/*                  Character Methods                   */
 	/********************************************************/
 	
+	/**
+	 * Attacks the currently active boss with a given user's active hero.
+	 * @param username
+	 * @param bossId
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
 	public void attackBoss(String username, int bossId) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		attackBoss(character, bossId);
+	}
+	
+	/**
+	 * Attacks the currently active boss with a given hero.
+	 * @param heroId
+	 * @param bossId
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void attackBoss(int heroId, int bossId) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		attackBoss(character, bossId);
+	}
+
+	private void attackBoss(MythlandsCharacter hero, int bossId) throws MythlandsServiceException {
 		// Make sure character is alive
-		MythlandsCharacter hero = getUserCharacter(username);
 		if(hero.isDeceased()) {
 			throw new MythlandsServiceException("Hero is dead.");
 		}
@@ -107,6 +138,17 @@ public class MythlandsGameService {
 		if(currentTime < hero.getAttackReady()) {
 			throw new MythlandsServiceException("Attack is still on cooldown.");
 		}
+
+		long now = System.currentTimeMillis();
+		var data = new HashMap<String, String>();
+		data.put("stat", "STRENGTH");
+		data.put("additional", "5");
+		addStatusEffectInstance(
+				"TestEffect", 
+				hero, 
+				data, 
+				now
+		);
 		
 		// Do boss calculations
 		synchronized(bossLock) {
@@ -126,7 +168,7 @@ public class MythlandsGameService {
 			// Do the attack
 			boss.damage(1);
 			if(!contribs.containsKey(hero.getId())) {
-				contribs.put(hero.getId(), new ContributionInfo(username));
+				contribs.put(hero.getId(), new ContributionInfo());
 			}
 			var info = contribs.get(hero.getId());
 			info.addTotalDamage(1);
@@ -150,17 +192,19 @@ public class MythlandsGameService {
 		eventPublisher.publishEvent(new BossUpdateEvent(boss));
 		
 		// Do attack post processing
-		var receivedDamage = loseHealth(username, 1);
-		var xpGained = grantXp(username, 1);
+		modifyHealth(hero, -1);
+		grantXp(hero, 1);
 		// TODO: xp gain modifier
 		// TODO: gold?
 		
-		eventPublisher.publishEvent(new CharacterUpdateEvent(username, receivedDamage, xpGained));
+		MythlandsCharacterDTO heroDto = new MythlandsCharacterDTO(hero);
+		eventPublisher.publishEvent(new CharacterStatsUpdateEvent(heroDto));
 		
 		// Set attack cooldown
 		int cooldownTime = (int) Math.round(hero.getAttackCooldown().getValue());
-		setAttackCooldown(username, currentTime + cooldownTime);
-		eventPublisher.publishEvent(new CooldownUpdateEvent(username, cooldownTime / 1000.0));
+		setAttackCooldown(hero, currentTime + cooldownTime);
+		// TODO: incorporate this in stats?
+		eventPublisher.publishEvent(new CooldownUpdateEvent(hero.getOwner().getUsername(), cooldownTime / 1000.0));
 	}
 	
 	@Transactional
@@ -189,8 +233,8 @@ public class MythlandsGameService {
 			// Add their xp
 			int xpGained = 5 + (contrib.dealtKillingBlow() ? 5 : 0);
 			try {
-				JsonObject updates = grantXp(contrib.getUsername(), xpGained);
-				eventPublisher.publishEvent(new CharacterUpdateEvent(contrib.getUsername(), updates));
+				grantXp(hero.getId(), xpGained);
+				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(new MythlandsCharacterDTO(hero)));
 			} catch (MythlandsServiceException e) {
 				logger.warn("Unable to grant xp to contributor {}: {}",
 						hero.getFullName(), e.getMessage());
@@ -205,196 +249,304 @@ public class MythlandsGameService {
 	public BossDTO getActiveBoss() {
 		return new BossDTO(boss);
 	}
-	
+
+	/**
+	 * Sets the attack cooldown for a user's active character.
+	 * @param username
+	 * @param ready
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
 	public void setAttackCooldown(String username, long ready) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		hero.setAttackReady(ready);
+		MythlandsCharacter character = getUserCharacter(username);
+		setAttackCooldown(character, ready);
+	}
+
+	/**
+	 * Sets the attack cooldown for a character.
+	 * @param heroId
+	 * @param ready
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void setAttackCooldown(int heroId, long ready) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		setAttackCooldown(character, ready);
 	}
 	
-	@Transactional
-	public JsonObject loseHealth(String username, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		hero.modifyCurrentHealth(-amount);
-		double newHealth = hero.getCurrentHealth();
-		
-		JsonObject updates = new JsonObject();
-		updates.addProperty("currentHealth", newHealth);
-		if(newHealth <= 0) {
-			updates.addProperty("isDeceased", true);
-			hero.setDeceased(true);
-		}
-		
-		return updates;
+	private void setAttackCooldown(MythlandsCharacter character, long ready) throws MythlandsServiceException {
+		character.setAttackReady(ready);
 	}
 	
+	/**
+	 * Modifies the health of a user's active character.
+	 * @param username
+	 * @param amount
+	 * @return true if a change was made to the health value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public JsonObject gainHealth(String username, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		double prevHealth = hero.getCurrentHealth();
-		hero.modifyCurrentHealth(amount);
-		JsonObject update = new JsonObject();
-		if(prevHealth != hero.getCurrentHealth()) {
-			update.addProperty("currentHealth", hero.getCurrentHealth());
-		}
-		return update;
+	public boolean modifyHealth(String username, double amount) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return modifyHealth(character, amount);
 	}
 	
+	/**
+	 * Modifies the health of a character.
+	 * @param heroId
+	 * @param amount
+	 * @return true if a change was made to the health value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public JsonObject loseMana(String username, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		double prevMana = hero.getCurrentMana();
-		hero.modifyCurrentMana(-amount);
-		JsonObject update = new JsonObject();
-		if(prevMana != hero.getCurrentMana()) {
-			update.addProperty("currentMana", hero.getCurrentMana());
-		}
-		return update;
+	public boolean modifyHealth(int heroId, double amount) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		return modifyHealth(character, amount);
 	}
 	
-	@Transactional
-	public JsonObject gainMana(String username, double amount) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		double prevMana = hero.getCurrentMana();
-		hero.modifyCurrentMana(amount);
-		JsonObject update = new JsonObject();
-		if(prevMana != hero.getCurrentMana()) {
-			update.addProperty("currentMana", hero.getCurrentMana());
-		}
-		return update;
+	private boolean modifyHealth(MythlandsCharacter character, double amount) throws MythlandsServiceException {
+		double prev = character.getCurrentHealth();
+		character.modifyCurrentHealth(amount);
+		return prev != character.getCurrentHealth();
 	}
 	
+	/**
+	 * Modifies the mana of a user's active character.
+	 * @param username
+	 * @param amount
+	 * @return true if a change was made to the mana value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public JsonObject addStatModification(String username, StatType stat, double additional, double increase, double more) 
+	public boolean modifyMana(String username, double amount) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return modifyMana(character, amount);
+	}
+	
+	/**
+	 * Modifies the mana of a character.
+	 * @param heroId
+	 * @param amount
+	 * @return true if a change was made to the mana value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean modifyMana(int heroId, double amount) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		return modifyMana(character, amount);
+	}
+	
+	private boolean modifyMana(MythlandsCharacter character, double amount) throws MythlandsServiceException {
+		double prev = character.getCurrentMana();
+		character.modifyCurrentMana(amount);
+		return prev != character.getCurrentMana();
+	}
+	
+	/**
+	 * Adds a stat modification to the stat of a user's active character.
+	 * @param username
+	 * @param stat
+	 * @param additional
+	 * @param increase
+	 * @param more
+	 * @return true if a change was made to the stat value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean addStatModification(String username, StatType stat, double additional, double increase, double more) 
+			throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return addStatModification(character, stat, additional, increase, more);
+	}
+	
+	/**
+	 * Adds a stat modification to the stat of a character.
+	 * @param heroId
+	 * @param stat
+	 * @param additional
+	 * @param increase
+	 * @param more
+	 * @return true if a change was made to the stat value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean addStatModification(int heroId, StatType stat, double additional, double increase, double more) 
+			throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		return addStatModification(character, stat, additional, increase, more);
+	}
+	
+	private boolean addStatModification(MythlandsCharacter character, StatType stat, double additional, double increase, double more) 
 			throws MythlandsServiceException {
 		
-		MythlandsCharacter hero = getUserCharacter(username);
-		JsonObject changes = new JsonObject();
+		// TODO: check for illegal argument values
 		
 		// Apply the stat changes
-		var statValue = hero.getStat(stat);
+		var statValue = character.getStat(stat);
+		double prev = statValue.getValue();
 		statValue.addAdditional(additional);
 		statValue.addIncrease(increase);
 		statValue.addMultiplier(more);
-
-		// Create object to reflect changes
-		String statString = getStatString(stat);
-		if(statString != null) {
-			changes.addProperty(statString, hero.getStat(stat).getValue());
-		}
 		
-		return changes;
+		return prev != statValue.getValue();
 	}
 	
+	/**
+	 * Removes a stat modification from the stat of a user's active character.
+	 * @param username
+	 * @param stat
+	 * @param additional
+	 * @param increase
+	 * @param more
+	 * @return true if a change was made to the stat value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public JsonObject removeStatModification(String username, StatType stat, double additional, double increase, double more) 
+	public boolean removeStatModification(String username, StatType stat, double additional, double increase, double more) 
+			throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return removeStatModification(character, stat, additional, increase, more);
+	}
+	
+	/**
+	 * Removes a stat modification from the stat of a character.
+	 * @param heroId
+	 * @param stat
+	 * @param additional
+	 * @param increase
+	 * @param more
+	 * @return true if a change was made to the stat value; false otherwise
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean removeStatModification(int heroId, StatType stat, double additional, double increase, double more) 
+			throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		return removeStatModification(character, stat, additional, increase, more);
+	}
+
+	private boolean removeStatModification(MythlandsCharacter character, StatType stat, double additional, double increase, double more) 
 			throws MythlandsServiceException {
 		
-		MythlandsCharacter hero = getUserCharacter(username);
-		JsonObject changes = new JsonObject();
-		
-		// TODO: check for invalid values here?
+		// TODO: check for illegal argument values
 		
 		// Apply the stat changes
-		var statValue = hero.getStat(stat);
+		var statValue = character.getStat(stat);
+		double prev = statValue.getValue();
 		statValue.removeAdditional(additional);
 		statValue.removeIncrease(increase);
 		statValue.removeMultiplier(more);
 
-		// Create object to reflect changes
-		String statString = getStatString(stat);
-		if(statString != null) {
-			changes.addProperty(statString, hero.getStat(stat).getValue());
-		}
-		
-		return changes;
+		return prev != statValue.getValue();
 	}
 	
+	/**
+	 * Uses a skill point to increase a user's active character's stat value
+	 * @param username
+	 * @param skill
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
 	public void useSkillPoint(String username, StatType skill) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		
+		MythlandsCharacter character = getUserCharacter(username);
+		useSkillPoint(character, skill);
+	}
+	
+	/**
+	 * Uses a skill point to increase a stat value
+	 * @param heroId
+	 * @param skill
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void useSkillPoint(int heroId, StatType skill) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		useSkillPoint(character, skill);
+	}
+
+	private void useSkillPoint(MythlandsCharacter character, StatType skill) throws MythlandsServiceException {
 		// Check hero meets requirements to skill up
-		if(hero.isDeceased()) {
+		if(character.isDeceased()) {
 			throw new MythlandsServiceException("Hero is dead.");
 		}
-		else if(hero.getSkillPoints() < 1) {
+		else if(character.getSkillPoints() < 1) {
 			throw new MythlandsServiceException("No skill points available to spend.");
 		}
 		
-		JsonObject updates = new JsonObject();
-		hero.setSkillPoints(hero.getSkillPoints() - 1);
-		updates.addProperty("skillPoints", hero.getSkillPoints());
+		character.setSkillPoints(character.getSkillPoints() - 1);
 		
 		switch(skill) {
 		
 		case ATTUNEMENT:
-			hero.getAttunement().modifyBase(1);
-			updates.addProperty("attunement", hero.getAttunement().getValue());
+			character.getAttunement().modifyBase(1);
 			break;
 			
 		case AVOIDANCE:
-			hero.getAvoidance().modifyBase(1);
-			updates.addProperty("avoidance", hero.getAvoidance().getValue());
+			character.getAvoidance().modifyBase(1);
 			break;
 			
 		case DEXTERITY:
-			hero.getDexterity().modifyBase(1);
-			updates.addProperty("dexterity", hero.getDexterity().getValue());
+			character.getDexterity().modifyBase(1);
 			break;
 			
 		case RESISTANCE:
-			hero.getResistance().modifyBase(1);
-			updates.addProperty("resistance", hero.getResistance().getValue());
+			character.getResistance().modifyBase(1);
 			break;
 			
 		case STRENGTH:
-			hero.getStrength().modifyBase(1);
-			updates.addProperty("strength", hero.getStrength().getValue());
+			character.getStrength().modifyBase(1);
 			break;
 			
 		case TOUGHNESS:
-			hero.getToughness().modifyBase(1);
-			updates.addProperty("toughness", hero.getToughness().getValue());
+			character.getToughness().modifyBase(1);
 			break;
 			
 		case SPIRIT:
-			hero.getSpirit().modifyBase(1);
-			hero.recalculateMaxMana();
-			updates.addProperty("spirit", hero.getSpirit().getValue());
-			updates.addProperty("currentMana", hero.getCurrentMana());
-			updates.addProperty("maxMana", hero.getMaxMana());
+			character.getSpirit().modifyBase(1);
+			character.recalculateMaxMana();
 			break;
 			
 		case STAMINA:
-			hero.getStamina().modifyBase(1);
-			hero.recalculateMaxHealth();
-			updates.addProperty("stamina", hero.getStamina().getValue());
-			updates.addProperty("currentHealth", hero.getCurrentHealth());
-			updates.addProperty("maxHealth", hero.getMaxHealth());
+			character.getStamina().modifyBase(1);
+			character.recalculateMaxHealth();
 			break;
 			
 		default:
 			throw new MythlandsServiceException("Stat \"" + skill + "\" is not a valid skill point stat.");
 		
-		}		
-		
-		if(updates.size() > 0) {
-			eventPublisher.publishEvent(new CharacterUpdateEvent(username, updates));
 		}
 	}
 	
+	/**
+	 * Grants xp to a user's active hero and handles any level up that may occur.
+	 * @param username
+	 * @param xp
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public JsonObject grantXp(String username, int xp) 
-			throws MythlandsServiceException {
+	public void grantXp(String username, int xp) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		grantXp(character, xp);
+	}
+	
+	/**
+	 * Grants xp to a hero and handles any level up that may occur.
+	 * @param heroId
+	 * @param xp
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void grantXp(int heroId, int xp) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		grantXp(character, xp);
+	}
+	
+	private void grantXp(MythlandsCharacter character, int xp) throws MythlandsServiceException {
+		int oldLevel = character.getLevel();
 		
-		MythlandsCharacter hero = getUserCharacter(username);
-		
-		int oldLevel = hero.getLevel();
-		
-		int newXp = hero.getXp() + xp;
-		int newLevel = hero.getLevel();
-		int newSkillPoints = hero.getSkillPoints();
+		int newXp = character.getXp() + xp;
+		int newLevel = character.getLevel();
+		int newSkillPoints = character.getSkillPoints();
 		int xpRequired = 10 + (10 * (newLevel - 1));
 		while(newXp >= xpRequired) {
 			newXp -= xpRequired;
@@ -402,29 +554,18 @@ public class MythlandsGameService {
 			newSkillPoints++;
 			xpRequired = 10 + (10 * (newLevel - 1));
 		}
-		hero.setXp(newXp);
-		hero.setLevel(newLevel);
-		hero.setSkillPoints(newSkillPoints);
-		
-		JsonObject updates = new JsonObject();
-		updates.addProperty("xp", newXp);
+		character.setXp(newXp);
+		character.setLevel(newLevel);
+		character.setSkillPoints(newSkillPoints);
+
+		// If they leveled up, we also need to recalculate health and mana.
 		if(oldLevel != newLevel) {
-			updates.addProperty("level", newLevel);
-			updates.addProperty("skillPoints", newSkillPoints);
-			
-			// If they leveled up, we also need to recalculate health and mana.
-			hero.recalculateMaxHealth();
-			hero.recalculateMaxMana();
-			
-			updates.addProperty("currentHealth", hero.getCurrentHealth());
-			updates.addProperty("maxHealth", hero.getMaxHealth());
-			updates.addProperty("currentMana", hero.getCurrentMana());
-			updates.addProperty("maxMana", hero.getMaxMana());
+			character.recalculateMaxHealth();
+			character.recalculateMaxMana();
 		}
-		
-		return updates;
 	}
 	
+	@Transactional
 	public List<MythlandsCharacterDTO> getHallOfFameCharacters(int pageSize, int pageNum) {
 		List<MythlandsCharacter> characters = characterRepository.findByOrderByLevelDescXpDesc(
 			Pageable.ofSize(pageSize).withPage(pageNum)
@@ -439,19 +580,43 @@ public class MythlandsGameService {
 	/*                 Inventory Methods                    */
 	/********************************************************/
 	
+	/**
+	 * Equips an item from the user's active character's inventory.
+	 * @param username
+	 * @param equipSlot
+	 * @param invSlot
+	 * @throws MythlandsServiceException if the equip is invalid
+	 */
 	@Transactional
-	public JsonObject equipItem(String username, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
-		MythlandsCharacter hero = getUserCharacter(username);
-		
+	public void equipItem(String username, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		equipItem(character, equipSlot, invSlot);
+	}
+	
+	/**
+	 * Equips an item from the character's inventory.
+	 * @param heroId
+	 * @param equipSlot
+	 * @param invSlot
+	 * @throws MythlandsServiceException if the equip is invalid
+	 */
+	@Transactional
+	public void equipItem(int heroId, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		equipItem(character, equipSlot, invSlot);
+	}
+	
+
+	private void equipItem(MythlandsCharacter character, EquippableItemSlot equipSlot, int invSlot) throws MythlandsServiceException {
 		// Check item is equippable
-		ItemInstance equipInstance = hero.getInventory().get(invSlot);
+		ItemInstance equipInstance = character.getInventory().get(invSlot);
 		if(!(equipInstance instanceof EquippableItemInstance) && equipInstance != null) {
 			throw new MythlandsServiceException("Cannot equip non-equippable item.");
 		}
 		
 		// Get items that we will be swapping
 		EquippableItemInstance equip = (equipInstance == null ? null : (EquippableItemInstance) equipInstance);
-		EquippableItemInstance dequip = hero.getEquipped(equipSlot);
+		EquippableItemInstance dequip = character.getEquipped(equipSlot);
 
 		// Make sure item slot matches
 		if(equip != null) {
@@ -465,15 +630,15 @@ public class MythlandsGameService {
 		switch(equipSlot) {
 		
 		case ARMOR:
-			hero.setArmorItem(equip);
+			character.setArmorItem(equip);
 			break;
 		
 		case TRINKET:
-			hero.setTrinketItem(equip);
+			character.setTrinketItem(equip);
 			break;
 		
 		case WEAPON:
-			hero.setWeaponItem(equip);
+			character.setWeaponItem(equip);
 			break;
 			
 		default:
@@ -481,14 +646,15 @@ public class MythlandsGameService {
 		
 		}
 		
-		CombatContext context = new CombatContext(username, hero.getId(), boss);
+		CombatContext context = new CombatContext(new MythlandsCharacterDTO(character), boss);
 		
 		if(dequip == null) {
-			hero.getInventory().remove(invSlot);
+			character.getInventory().remove(invSlot);
 		}
 		else {
-			hero.getInventory().put(invSlot, dequip);
+			character.getInventory().put(invSlot, dequip);
 			
+			// Call the onDequip functions for each affix on the dequipped item
 			var affixes = dequip.getAffixes();
 			for(var affix : affixes) {
 				var data = affix.getData();
@@ -497,7 +663,7 @@ public class MythlandsGameService {
 			}
 		}
 
-		// TODO: call on equip and on dequip for affixes!
+		// Call the onEquip functions for each affix on the equipped item
 		if(equip != null) {
 			var affixes = equip.getAffixes();
 			for(var affix : affixes) {
@@ -506,30 +672,43 @@ public class MythlandsGameService {
 				func.execute(context, data);
 			}
 		}
-		
-		// Create updates
-		JsonObject updates = new JsonObject();
-		updates.add("" + invSlot, gson.toJsonTree(
-				dequip == null ? null : new EquippableItemInstanceDTO(dequip)
-		));
-		updates.add("" + equipSlot, gson.toJsonTree(
-				equip == null ? null : new EquippableItemInstanceDTO(equip)
-		));
-		return updates;
 	}
 	
+	/**
+	 * Uses an item in the user's active character's inventory.
+	 * @param username
+	 * @param useSlot
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
 	@Transactional
-	public JsonObject useInventoryItem(String username, int heroId, int useSlot) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
-		ItemInstance use = hero.getInventory().get(useSlot);
+	public void useInventoryItem(String username, int useSlot) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		useInventoryItem(character, useSlot);
+	}
+	
+	/**
+	 * Uses an item in the character's inventory.
+	 * @param heroId
+	 * @param useSlot
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void useInventoryItem(int heroId, int useSlot) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		useInventoryItem(character, useSlot);
+	}
+
+	private void useInventoryItem(MythlandsCharacter character, int useSlot) throws MythlandsServiceException {
+		ItemInstance use = character.getInventory().get(useSlot);
 		
 		// Can't use empty slot
 		if(use == null) {
-			return new JsonObject();
+			throw new MythlandsServiceException("No item in that slot to use.");
 		}
 		
 		// Use function is based on item type
-		ItemTemplate template = use.getTemplate();
 		if(use instanceof ConsumableItemInstance) {
 			
 			// Check item cooldown
@@ -542,41 +721,61 @@ public class MythlandsGameService {
 			CombatAction onConsume = consumable.getConsumableItemTemplate().getOnConsume();
 			CombatActionFunction function = getCombatActionFunction(onConsume.getFunctionName());
 			// TODO: include boss (thread safety!)
-			function.execute(new CombatContext(username, heroId, null), onConsume.getActionData());
+			function.execute(new CombatContext(new MythlandsCharacterDTO(character), null), onConsume.getActionData());
 			consumable.modifyCount(-1);
 			consumable.triggerCooldown();
 			
 			// Delete item if out
 			if(use.getCount() == 0) {
-				hero.getInventory().remove(useSlot);
+				character.getInventory().remove(useSlot);
 				itemRepository.delete(use);
 			}
 		}
 		// Non-usable item type
 		else {
-			return new JsonObject();
+			throw new MythlandsServiceException("Item with class " + use.getClass().getSimpleName() + " cannot be used.");
 		}
-		
-		JsonObject change = new JsonObject();
-		change.add("" + useSlot, gson.toJsonTree(hero.getInventory().get(useSlot)));
-		return change;
 	}
 	
+	/**
+	 * Moves an item in the user's active character's inventory.
+	 * @param username
+	 * @param fromSlot
+	 * @param toSlot
+	 * @throws MythlandsServiceException if the move is invalid
+	 */
 	@Transactional
-	public JsonObject moveInventoryItem(int heroId, int fromSlot, int toSlot) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
-		ItemInstance fromItem = hero.getInventory().get(fromSlot);
-		ItemInstance toItem = hero.getInventory().get(toSlot);
+	public void moveInventoryItem(String username, int fromSlot, int toSlot) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		moveInventoryItem(character, fromSlot, toSlot);
+	}
+	
+	/**
+	 * Moves an item in the character's inventory.
+	 * @param heroId
+	 * @param fromSlot
+	 * @param toSlot
+	 * @throws MythlandsServiceException if the move is invalid
+	 */
+	@Transactional
+	public void moveInventoryItem(int heroId, int fromSlot, int toSlot) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		moveInventoryItem(character, fromSlot, toSlot);
+	}
+
+	private void moveInventoryItem(MythlandsCharacter character, int fromSlot, int toSlot) throws MythlandsServiceException {
+		ItemInstance fromItem = character.getInventory().get(fromSlot);
+		ItemInstance toItem = character.getInventory().get(toSlot);
 		
 		// If we're not moving an actual item, just don't do anything.
 		if(fromItem == null) {
-			return new JsonObject();
+			throw new MythlandsServiceException("Can't move from empty item slot.");
 		}
 		
 		// If there's not item in the slot we're moving to, just move.
 		if(toItem == null) {
-			hero.getInventory().remove(fromSlot);
-			hero.getInventory().put(toSlot, fromItem);
+			character.getInventory().remove(fromSlot);
+			character.getInventory().put(toSlot, fromItem);
 		}
 		
 		// If we're moving stackable items, just move as many from
@@ -597,7 +796,7 @@ public class MythlandsGameService {
 			// then delete the fromItem instance and clear that slot.
 			else {
 				toItem.modifyCount(fromItem.getCount());
-				hero.getInventory().remove(fromSlot);
+				character.getInventory().remove(fromSlot);
 				itemRepository.delete(fromItem);
 			}
 			
@@ -605,29 +804,43 @@ public class MythlandsGameService {
 		
 		// Moving non-stackable items, so just swap them thangs
 		else {
-			hero.getInventory().remove(toSlot);
-			hero.getInventory().remove(fromSlot);
-			characterRepository.saveAndFlush(hero);
-			hero.getInventory().put(toSlot, fromItem);
-			hero.getInventory().put(fromSlot, toItem);
+			character.getInventory().remove(toSlot);
+			character.getInventory().remove(fromSlot);
+			characterRepository.saveAndFlush(character);
+			character.getInventory().put(toSlot, fromItem);
+			character.getInventory().put(fromSlot, toItem);
 		}
 		
-		// Indicate the new values in each slot
-		JsonObject changes = new JsonObject();
-		ItemInstance fromResult = hero.getInventory().get(fromSlot);
-		ItemInstance toResult = hero.getInventory().get(toSlot);
-		changes.add("" + fromSlot, gson.toJsonTree(fromResult == null ? null : getInstanceDTO(fromResult)));
-		changes.add("" + toSlot, gson.toJsonTree(toResult == null ? null : getInstanceDTO(toResult)));
-		return changes;
-		
-	}
-	
-	public void addInventoryItem(int heroId, String itemInstanceId) throws MythlandsServiceException {
-		addInventoryItem(heroId, UUID.fromString(itemInstanceId));
 	}
 	
 	/**
-	 * 
+	 * Adds an item to the user's active character's inventory.
+	 * @param username
+	 * @param itemInstanceId
+	 * @return true if the item instance was added in its entirety; false if there is any item(s) remaining
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean addInventoryItem(String username, UUID itemInstanceId) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return addInventoryItem(character, itemInstanceId);
+	}
+	
+	/**
+	 * Adds an item to the user's active character's inventory.
+	 * @param username
+	 * @param itemInstanceId
+	 * @return true if the item instance was added in its entirety; false if there is any item(s) remaining
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean addInventoryItem(String username, String itemInstanceId) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return addInventoryItem(character, UUID.fromString(itemInstanceId));
+	}
+	
+	/**
+	 * Adds an item to the hero's inventory.
 	 * @param heroId
 	 * @param itemInstanceId
 	 * @return true if the item instance was added in its entirety; false if there is any item(s) remaining
@@ -635,27 +848,44 @@ public class MythlandsGameService {
 	 */
 	@Transactional
 	public boolean addInventoryItem(int heroId, UUID itemInstanceId) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
+		MythlandsCharacter character = getCharacter(heroId);
+		return addInventoryItem(character, itemInstanceId);
+	}
+	
+	/**
+	 * Adds an item to the hero's inventory.
+	 * @param heroId
+	 * @param itemInstanceId
+	 * @return true if the item instance was added in its entirety; false if there is any item(s) remaining
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public boolean addInventoryItem(int heroId, String itemInstanceId) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		return addInventoryItem(character, UUID.fromString(itemInstanceId));
+	}
+
+	private boolean addInventoryItem(MythlandsCharacter character, UUID itemInstanceId) throws MythlandsServiceException {
 		ItemInstance add = getItemInstance(itemInstanceId);
 		
 		// Prevent adding same item multiple times
-		if(hero.getInventory().containsValue(add)) {
+		if(character.getInventory().containsValue(add)) {
 			throw new MythlandsServiceException("Item already in inventory");
 		}
 		
 		// Check if the character's inventory contains any items which this one could stack with.
-		List<ItemInstance> stackable = hero.getInventory().values().stream()
+		List<ItemInstance> stackable = character.getInventory().values().stream()
 				.filter(add::isStackable)
 				.collect(Collectors.toList());
 		
 		if(stackable.size() == 0) {
 			// Item cannot be stacked, so try to add it to an empty slot in the inventory
-			int insertSlot = hero.getFirstEmptyInventorySlot();
+			int insertSlot = character.getFirstEmptyInventorySlot();
 			if(insertSlot == -1) {
 				return false;
 			}
 			else {
-				hero.getInventory().put(insertSlot, add);
+				character.getInventory().put(insertSlot, add);
 				return true;
 			}
 		}
@@ -685,32 +915,50 @@ public class MythlandsGameService {
 			// Otherwise, adjust the item count in the stack and then add.
 			else {
 				add.setCount(remaining);
-				int insertSlot = hero.getFirstEmptyInventorySlot();
+				int insertSlot = character.getFirstEmptyInventorySlot();
 				if(insertSlot == -1) {
 					return false;
 				}
 				else {
-					hero.getInventory().put(insertSlot, add);
+					character.getInventory().put(insertSlot, add);
 					return true;
 				}
 			}
 			
 		}
-		
 	}
 	
+	/**
+	 * Retrieves the inventory for user's active character.
+	 * @param username
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public Map<Integer, ItemInstanceDTO> getInventory(String username) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return getInventory(character);
+	}
+	
+	/**
+	 * Retrieves the inventory for a given hero.
+	 * @param heroId
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
 	public Map<Integer, ItemInstanceDTO> getInventory(int heroId) throws MythlandsServiceException {
-		MythlandsCharacter hero = getCharacter(heroId);
-		Map<Integer, ItemInstance> inventory = hero.getInventory();
+		MythlandsCharacter character = getCharacter(heroId);
+		return getInventory(character);
+	}
+
+	private Map<Integer, ItemInstanceDTO> getInventory(MythlandsCharacter character) throws MythlandsServiceException {
+		Map<Integer, ItemInstance> inventory = character.getInventory();
 		return inventory.keySet().stream()
 				.collect(Collectors.toMap(
 						slot -> slot, 
 						slot -> getInstanceDTO(inventory.get(slot))
 				));
-	}
-	
-	public boolean isDeceased(int heroId) throws MythlandsServiceException {
-		return getCharacter(heroId).isDeceased();
 	}
 	
 	/********************************************************/
@@ -745,6 +993,175 @@ public class MythlandsGameService {
 		}
 		
 		functionMap.put(functionName, function);
+	}
+	
+	/********************************************************/
+	/*                    Status Effects                    */
+	/********************************************************/
+	
+	@Transactional
+	public StatusEffectTemplateDTO createStatusEffectTemplate
+			(String id, String name, String onApplyFunction, String onRemoveFunction, String description, String icon, boolean isBuff, long duration) 
+			throws MythlandsServiceException {
+		
+		// Make sure the template doesn't already exist
+		var existing = statusTemplateRepository.findById(id);
+		if(existing.isPresent()) {
+			throw new MythlandsServiceException("A status effect template with that id already exists.");
+		}
+		
+		StatusEffectTemplate effect = new StatusEffectTemplate(id, name, onApplyFunction, onRemoveFunction, description, icon, isBuff, duration);
+		statusTemplateRepository.save(effect);
+		return new StatusEffectTemplateDTO(effect);
+	}
+	
+	/**
+	 * Creates a new status effect instance and adds it to the specified user's 
+	 * active character's list of effects.
+	 * @param templateId
+	 * @param heroId
+	 * @param data
+	 * @param startTime
+	 * @throws MythlandsServiceException
+	 */
+	public void addStatusEffectInstance
+			(String templateId, String username, Map<String, String> data, long startTime)
+			throws MythlandsServiceException {
+		
+		MythlandsCharacter character = getUserCharacter(username);
+		addStatusEffectInstance(templateId, character, data, startTime);
+		
+	}
+	
+	/**
+	 * Creates a new status effect instance and adds it to the specified character's 
+	 * list of effects.
+	 * @param templateId
+	 * @param heroId
+	 * @param data
+	 * @param startTime
+	 * @throws MythlandsServiceException
+	 */
+	public void addStatusEffectInstance
+			(String templateId, int heroId, Map<String, String> data, long startTime)
+			throws MythlandsServiceException {
+		
+		MythlandsCharacter character = getCharacter(heroId);
+		addStatusEffectInstance(templateId, character, data, startTime);
+	}
+	
+	@Transactional
+	private void addStatusEffectInstance
+			(String templateId, MythlandsCharacter hero, Map<String, String> data, long startTime)
+			throws MythlandsServiceException {
+		
+		var template = getEffectTemplate(templateId);
+		StatusEffectInstance instance = new StatusEffectInstance(template, data, startTime, startTime + template.getDuration());
+		instance.setCharacter(hero);
+		hero.getStatusEffects().add(instance);
+		
+		MythlandsCharacterDTO heroDto = new MythlandsCharacterDTO(hero);
+		
+		CombatActionFunction onApply = getCombatActionFunction(template.getOnApplyFunction());
+		//TODO: boss in context & thread safety
+		onApply.execute(new CombatContext(heroDto, null), data);
+		System.out.println("Added effect " + templateId);
+		
+		eventPublisher.publishEvent(new CharacterEffectsUpdateEvent(heroDto));
+		
+	}
+	
+	/**
+	 * Retrieves a list of effects for a given user's active character.
+	 * @param username
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public List<StatusEffectInstanceDTO> getStatusEffects(String username) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		return getStatusEffects(character);
+	}
+	
+	/**
+	 * Retrieves a list of effects for a given character.
+	 * @param heroId
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public List<StatusEffectInstanceDTO> getStatusEffects(int heroId) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		return getStatusEffects(character);
+	}
+
+	private List<StatusEffectInstanceDTO> getStatusEffects(MythlandsCharacter character) throws MythlandsServiceException {
+		return character.getStatusEffects().stream()
+				.map(StatusEffectInstanceDTO::new)
+				.toList();
+	}
+	
+	/**
+	 * Updates the status effects for a given user's active character.
+	 * @param heroId
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void updateStatusEffects(String username) throws MythlandsServiceException {
+		MythlandsCharacter character = getUserCharacter(username);
+		updateStatusEffects(character);
+	}
+	
+	/**
+	 * Updates the status effects for a given character.
+	 * @param heroId
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public void updateStatusEffects(int heroId) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(heroId);
+		updateStatusEffects(character);
+	}
+	
+	private void updateStatusEffects(MythlandsCharacter character) throws MythlandsServiceException {
+		long now = System.currentTimeMillis();
+		
+		MythlandsCharacterDTO heroDto = new MythlandsCharacterDTO(character);
+		
+		// Loop through all effects
+		boolean removed = false;
+		Iterator<StatusEffectInstance> iter = character.getStatusEffects().iterator();
+		while(iter.hasNext()) {
+			StatusEffectInstance effect = iter.next();
+			
+			// Check if the effect has expired
+			if(effect.getFinishTime() < now) {
+				
+				// Remove it
+				iter.remove();
+				removed = true;
+				
+				// And run it's removal function
+				StatusEffectTemplate template = effect.getTemplate();
+				String onRemoveFunction = template.getOnRemoveFunction();
+			
+				System.out.printf("Removed effect %s (%d)\n", template.getId(), now - effect.getFinishTime());
+				
+				try {
+					CombatActionFunction remove = getCombatActionFunction(onRemoveFunction);
+					//TODO: add boss & thread safety to combat context
+					remove.execute(new CombatContext(heroDto, null), effect.getData());
+				} catch (MythlandsServiceException e) {
+					logger.warn("Unable to run remove function " + onRemoveFunction + " for effect " + template.getName());
+				}
+				
+			}
+		}
+		
+		// Fire update event if necessary
+		if(removed) {
+			eventPublisher.publishEvent(new CharacterEffectsUpdateEvent(heroDto));
+		}
 	}
 	
 	/********************************************************/
@@ -807,10 +1224,12 @@ public class MythlandsGameService {
 		return new ConsumableItemTemplateDTO(template);
 	}
 	
+	@Transactional
 	public ItemInstanceDTO createConsumableItemInstance(String templateId) throws MythlandsServiceException {
 		return createConsumableItemInstance(templateId, 1, new HashMap<String, String>());
 	}
 	
+	@Transactional
 	public ItemInstanceDTO createConsumableItemInstance(String templateId, int count) throws MythlandsServiceException {
 		return createConsumableItemInstance(templateId, count, new HashMap<String, String>());
 	}
@@ -893,6 +1312,14 @@ public class MythlandsGameService {
 			throw new MythlandsServiceException("No combat action with id " + actionId + " found.");
 		}
 		return action.get();
+	}
+	
+	private StatusEffectTemplate getEffectTemplate(String effectId) throws MythlandsServiceException {
+		Optional<StatusEffectTemplate> effect = statusTemplateRepository.findById(effectId);
+		if(effect.isEmpty()) {
+			throw new MythlandsServiceException("No effect template with id " + effectId + " found.");
+		}
+		return effect.get();
 	}
 	
 	private CombatActionFunction getCombatActionFunction(String functionName) throws MythlandsServiceException {

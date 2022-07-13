@@ -1,11 +1,12 @@
 package net.mythlands.core;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
-import javax.persistence.CollectionTable;
 import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Embedded;
@@ -17,12 +18,14 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapKeyColumn;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CascadeType;
 
+import net.mythlands.core.effect.StatusEffectInstance;
 import net.mythlands.core.item.EquippableItemInstance;
 import net.mythlands.core.item.EquippableItemSlot;
 import net.mythlands.core.item.EquippableItemTemplate;
@@ -71,6 +74,10 @@ public class MythlandsCharacter {
 	private EquippableItemInstance armorItem;
 	@OneToOne(cascade = {javax.persistence.CascadeType.ALL})
 	private EquippableItemInstance trinketItem;
+	
+	@OneToMany(mappedBy = "character", orphanRemoval = true)
+	@Cascade(CascadeType.ALL)
+	private List<StatusEffectInstance> statusEffects;
 	
 	/********************************************************/
 	/*                     Core Stats                       */
@@ -211,6 +218,7 @@ public class MythlandsCharacter {
 		currentMana = maxHealth.getValue();
 		
 		inventory = new HashMap<>();
+		statusEffects = new ArrayList<>();
 	}
 	
 	/********************************************************/
@@ -348,6 +356,10 @@ public class MythlandsCharacter {
 	
 	public Map<Integer, ItemInstance> getInventory() {
 		return inventory;
+	}
+	
+	public List<StatusEffectInstance> getStatusEffects() {
+		return statusEffects;
 	}
 	
 	public long getAttackReady() {

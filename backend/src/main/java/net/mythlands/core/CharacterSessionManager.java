@@ -13,7 +13,7 @@ import com.google.gson.JsonObject;
 
 import net.mythlands.dto.MythlandsCharacterDTO;
 import net.mythlands.dto.MythlandsUserDTO;
-import net.mythlands.event.CharacterUpdateEvent;
+import net.mythlands.event.CharacterStatsUpdateEvent;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.service.MythlandsGameService;
 import net.mythlands.service.MythlandsUserService;
@@ -123,10 +123,18 @@ public class CharacterSessionManager {
 							int userTimer = users.get(username);
 							userTimer += SERVER_TICK_DURATION;
 							
+							// Update the user's status effects
+							try {
+								gameService.updateStatusEffects(username);
+							} catch (MythlandsServiceException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							
 							// If the timer exceeds the update interval, update that hero and
 							// adjust the timer accordingly.
 							if(userTimer > HERO_UPDATE_INTERVAL) {
-								updateHero(username);
+								doHeroRegen(username);
 								userTimer -= HERO_UPDATE_INTERVAL;
 							}
 							
@@ -154,7 +162,7 @@ public class CharacterSessionManager {
 			}
 		}
 		
-		void updateHero(String username) {
+		void doHeroRegen(String username) {
 			try {
 				
 				// Retrieve the hero for the user
@@ -173,13 +181,14 @@ public class CharacterSessionManager {
 				// Regen health and mana
 				double hpAmount = heroDto.maxHealth * 0.1;
 				double manaAmount = heroDto.maxMana * 0.1;
-				JsonObject hpRegen = gameService.gainHealth(username, hpAmount);
-				JsonObject manaRegen = gameService.gainMana(username, manaAmount);
+				boolean update = gameService.modifyHealth(heroDto.id, hpAmount);
+				update |= gameService.modifyMana(heroDto.id, manaAmount);
 				
 				// If the hp/mana regen changed anything, send the updates
-				if(hpRegen.entrySet().size() > 0 || manaRegen.entrySet().size() > 0) {
-					eventPublisher.publishEvent(new CharacterUpdateEvent(username, hpRegen, manaRegen));
+				if(update) {
+					eventPublisher.publishEvent(new CharacterStatsUpdateEvent(heroDto));
 				}
+				
 			} catch (MythlandsServiceException e) {
 				e.printStackTrace();
 				System.err.println(e.getMessage());

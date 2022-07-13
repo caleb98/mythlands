@@ -23,6 +23,21 @@ public class Test implements CommandLineRunner {
 	@Transactional
 	public void run(String... args) {
 		try {
+			gameService.createStatusEffectTemplate(
+					"TestEffect", 
+					"Test Effect", 
+					"ApplyStatMod", 
+					"RemoveStatMod", 
+					"A test effect.", 
+					"", 
+					true, 
+					5000
+			);
+		} catch (MythlandsServiceException e) {
+			System.err.println(e.getMessage());
+		}
+		
+		try {
 			var data = new HashMap<String, String>();
 			data.put("amount", "5");
 			gameService.createCombatAction("HealingPotion_Lesser", data, "HealPlayer");

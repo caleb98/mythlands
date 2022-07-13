@@ -10,13 +10,14 @@
 		<div draggable="true" style="background-color: #00000000" @dragstart="drag" @mouseup="click" @contextmenu="event => event.preventDefault()">
 			<img :src="'/img' + icon" class="item-icon-image" draggable="false" @contextmenu="event => event.preventDefault()">
 
-			<div class="item-count-wrapper" v-if="displayItem">
-				<div class="item-count" v-if="displayItem.template.stackSize != 1">{{displayItem.count}}</div>
+			<div class="item-overlay-wrapper" v-if="displayItem">
+				<div class="item-count" v-if="displayItem.template.stackSize != 1">{{ displayItem.count }}</div>
+				<div class="item-cooldown" v-if="onCooldown">{{ cooldownTime }}</div>
 			</div>
 		</div>
 
 		<div class="recharge-overlay" :id="elementId + '-recharge-overlay'"
-			:style="{ 'animation-duration': cooldownLength + 's' }"
+			:style="{ 'animation-duration': cooldownDuration + 's' }"
 			:class="{ 'cooldown-active': onCooldown }">
 		</div>
 
@@ -51,6 +52,7 @@ export default {
 			tooltipX: 0,
 			tooltipY: 0,
 			onCooldown: false,
+			cooldownTime: 0,
 		}
 	},
 
@@ -91,7 +93,7 @@ export default {
 			return this.displayItem ? this.displayItem.cooldownFinish : false;
 		},
 
-		cooldownLength() {
+		cooldownDuration() {
 			if(this.hasCooldown) {
 				return (this.displayItem.cooldownFinish - this.displayItem.cooldownStart) / 1000;
 			}
@@ -213,6 +215,16 @@ export default {
 				case "trinket-item": return "TRINKET";
 				default: return null;
 			}
+		},
+
+		updateCooldownTimer() {
+			this.cooldownTime = ((this.displayItem.cooldownFinish - Date.now()) / 1000).toFixed(1);
+			if(this.onCooldown) {
+				this.cooldownTimer = setTimeout(this.updateCooldownTimer, 10);
+			}
+			else {
+				this.cooldownTimer = null;
+			}
 		}
 	},
 
@@ -223,6 +235,8 @@ export default {
 				setTimeout(() => {
 					this.onCooldown = false;
 				}, this.displayItem.cooldownFinish - Date.now());
+				
+				this.cooldownTimer = setTimeout(this.updateCooldownTimer, 10);
 			}
 		}
 	}
@@ -249,7 +263,7 @@ export default {
 	image-rendering: crisp-edges;
 }
 
-.item-count-wrapper {
+.item-overlay-wrapper {
 	position: relative;
 }
 
@@ -259,6 +273,18 @@ export default {
 	right: -5px;
 	color: yellow;
 	user-select: none;
+}
+
+.item-cooldown {
+	position: absolute;
+	bottom: 18px;
+	left: 0%;
+	width: 100%;
+	color: yellow;
+	user-select: none;
+	font-size: 14px;
+	font-family: sans-serif;
+	font-weight: bold;
 }
 
 .recharge-overlay {

@@ -15,5 +15,9 @@ public class EquippableItemInstanceDTO extends ItemInstanceDTO {
 			affixes.add(new ItemAffixInstanceDTO(affix));
 		}
 	}
+	
+	public EquippableItemTemplateDTO getEquippableTemplate() {
+		return (EquippableItemTemplateDTO) template;
+	}
 
 }

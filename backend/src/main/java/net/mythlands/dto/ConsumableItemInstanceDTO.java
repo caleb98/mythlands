@@ -12,5 +12,9 @@ public class ConsumableItemInstanceDTO extends ItemInstanceDTO {
 		cooldownStart = instance.getCooldownStart();
 		cooldownFinish = instance.getCooldownFinish();
 	}
+	
+	public ConsumableItemTemplateDTO getConsumableTemplate() {
+		return (ConsumableItemTemplateDTO) template;
+	}
 
 }

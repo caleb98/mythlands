@@ -18,7 +18,7 @@ public class ChatMessage {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer id;
+	private int id;
 	
 	@Column(nullable = false)
 	private Instant timestamp;
@@ -64,7 +64,7 @@ public class ChatMessage {
 		this.group = group;
 	}
 
-	public Integer getId() {
+	public int getId() {
 		return id;
 	}
 

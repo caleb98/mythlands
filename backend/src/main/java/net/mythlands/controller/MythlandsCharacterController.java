@@ -84,12 +84,7 @@ public class MythlandsCharacterController {
 	@MessageMapping("/character.moveinventory")
 	public void moveInventorySlots(MoveInventoryMessage swap, Principal principal) {
 		try {
-			var active = userService.getActiveCharacter(principal.getName());
-			var changes = gameService.moveInventoryItem(active.id, swap.fromSlot, swap.toSlot);
-			if(changes.size() > 0) {
-				messenger.convertAndSendToUser(principal.getName(), "/local/inventory", 
-						gson.toJson(changes));
-			}
+			gameService.moveInventoryItem(principal.getName(), swap.fromSlot, swap.toSlot);
 		} catch (MythlandsServiceException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));
 		}
@@ -98,12 +93,7 @@ public class MythlandsCharacterController {
 	@MessageMapping("/character.useinventory")
 	public void useInventorySlot(UseInventoryMessage use, Principal principal) {
 		try {
-			var active = userService.getActiveCharacter(principal.getName());
-			var changes = gameService.useInventoryItem(principal.getName(), active.id, use.useSlot);
-			if(changes.size() > 0) {
-				messenger.convertAndSendToUser(principal.getName(), "/local/inventory", 
-						gson.toJson(changes));
-			}
+			gameService.useInventoryItem(principal.getName(), use.useSlot);
 		} catch (MythlandsServiceException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));
 		}
@@ -112,11 +102,7 @@ public class MythlandsCharacterController {
 	@MessageMapping("/character.equip")
 	public void equipItem(EquipMessage equip, Principal principal) {
 		try {
-			var changes = gameService.equipItem(principal.getName(), equip.equipSlot, equip.invSlot);
-			if(changes.size() > 0) {
-				messenger.convertAndSendToUser(principal.getName(), "/local/inventory", 
-						gson.toJson(changes));	
-			}
+			gameService.equipItem(principal.getName(), equip.equipSlot, equip.invSlot);
 		} catch (MythlandsServiceException e) {
 			messenger.convertAndSendToUser(principal.getName(), "/local/error", new ErrorMessage(e.getMessage()));
 		}

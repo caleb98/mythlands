@@ -32,7 +32,7 @@ public class HallOfFameMessage {
 			
 			this.firstName = character.firstName;
 			this.lastName = character.lastName;
-			this.username = character.ownerName;
+			this.username = character.owner.username;
 			this.level = character.level;
 			this.xp = character.xp;
 			this.isDeceased = character.isDeceased;

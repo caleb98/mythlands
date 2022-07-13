@@ -14,7 +14,7 @@ public class EchoChatMessage {
 	public EchoChatMessage(ChatMessageDTO message) {
 		id = message.id;
 		timestamp = message.timestamp;
-		username = message.username;
+		username = message.user.username;
 		this.message = message.message;
 	}
 	
