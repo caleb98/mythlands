@@ -5,7 +5,7 @@
 
 		<!-- Item Name -->
 		<div class="row">
-			<div class="col-auto">{{itemInstance.template.name}}</div>
+			<div class="col-auto">{{itemInstance.name}}</div>
 		</div>
 	
 		<!-- Type/Slot -->
@@ -25,7 +25,7 @@
 
 		<!-- Item Desc -->
 		<div class="row mt-2 clean-text fst-italic">
-			<div class="col-auto">{{itemInstance.template.description}}</div>
+			<div class="col-auto">{{itemInstance.description}}</div>
 		</div>
 
 	</div>
@@ -45,7 +45,7 @@ export default {
 	
 	computed: {
 		rarityColor() {
-			switch(this.itemInstance.template.rarity) {
+			switch(this.itemInstance.rarity) {
 				case "JUNK": return'gray';
 				case "COMMON": return 'white';
 				case "UNCOMMON": return'#07d907';
@@ -67,8 +67,8 @@ export default {
 		},
 
 		itemType() {
-			if(this.itemInstance.template.slot) {
-				let slot = this.itemInstance.template.slot;
+			if(this.itemInstance.slot) {
+				let slot = this.itemInstance.slot;
 				return slot.charAt(0).toUpperCase() + slot.slice(1).toLowerCase();
 			}
 			else {

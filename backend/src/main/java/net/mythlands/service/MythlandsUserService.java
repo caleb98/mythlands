@@ -3,7 +3,6 @@ package net.mythlands.service;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
@@ -20,7 +19,6 @@ import net.mythlands.core.MythlandsUserDetails;
 import net.mythlands.dto.MythlandsCharacterDTO;
 import net.mythlands.dto.MythlandsUserDTO;
 import net.mythlands.exception.MythlandsServiceException;
-import net.mythlands.messages.out.CharacterListMessage;
 import net.mythlands.repository.MythlandsCharacterRepository;
 import net.mythlands.repository.MythlandsUserRepository;
 
@@ -133,15 +131,11 @@ public class MythlandsUserService implements UserDetailsService {
 	}
 	
 	@Transactional
-	public CharacterListMessage getCharacterList(String username) throws MythlandsServiceException {
+	public List<MythlandsCharacterDTO> getAllCharacters(String username) throws MythlandsServiceException {
 		MythlandsUser user = getUser(username);
-		
-		List<MythlandsCharacterDTO> characters = user.getCharacters().stream()
-				.map((c) -> new MythlandsCharacterDTO(c)).collect(Collectors.toList());
-		MythlandsCharacter active = user.getActiveCharacter();
-		int activeCharacterId = active == null ? -1 : active.getId();
-		
-		return new CharacterListMessage(characters, activeCharacterId);
+		return user.getCharacters().stream()
+				.map(MythlandsCharacterDTO::new)
+				.toList();
 	}
 	
 	private MythlandsUser getUser(String username) throws MythlandsServiceException {

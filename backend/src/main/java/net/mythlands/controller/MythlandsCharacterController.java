@@ -12,17 +12,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.google.gson.Gson;
-
 import net.mythlands.dto.ItemInstanceDTO;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.messages.in.EquipMessage;
 import net.mythlands.messages.in.MoveInventoryMessage;
 import net.mythlands.messages.in.SpendSkillPointMessage;
 import net.mythlands.messages.in.UseInventoryMessage;
-import net.mythlands.messages.out.CharacterListMessage;
 import net.mythlands.messages.out.ErrorMessage;
 import net.mythlands.messages.out.ServerMessage;
+import net.mythlands.response.CharacterInventoryRO;
+import net.mythlands.response.CharacterRO;
 import net.mythlands.service.MythlandsGameService;
 import net.mythlands.service.MythlandsUserService;
 
@@ -32,7 +31,6 @@ public class MythlandsCharacterController {
 	@Autowired private MythlandsUserService userService;
 	@Autowired private MythlandsGameService gameService;
 	@Autowired private SimpMessagingTemplate messenger;
-	@Autowired private Gson gson;
 	
 	@PostMapping("/character/create")
 	public @ResponseBody ServerMessage createCharacter(
@@ -50,11 +48,15 @@ public class MythlandsCharacterController {
 		return new ServerMessage("Character created!");
 	}
 	
-	@GetMapping("/character/list")
-	public @ResponseBody ServerMessage listCharacters(Principal principal) {
+	@GetMapping("/character")
+	public @ResponseBody ServerMessage getActiveCharacterData(Principal principal) {
+		if(principal == null) {
+			return new ServerMessage("You are not logged in.", true);
+		}
+		
 		try {
-			CharacterListMessage list = userService.getCharacterList(principal.getName());
-			return new ServerMessage("Success!", list);
+			CharacterRO character = new CharacterRO(userService.getActiveCharacter(principal.getName()));
+			return new ServerMessage("Success!", character);
 		} catch (MythlandsServiceException e) {
 			return new ServerMessage(e.getMessage(), true);
 		}
@@ -63,9 +65,7 @@ public class MythlandsCharacterController {
 	@GetMapping("/character/inventory")
 	public @ResponseBody ServerMessage getInventory(Principal principal) {
 		try {
-			Map<Integer, ItemInstanceDTO> inventory = gameService.getInventory(
-					userService.getActiveCharacter(principal.getName()).id
-			);
+			var inventory = new CharacterInventoryRO(userService.getActiveCharacter(principal.getName()));
 			return new ServerMessage("Success", inventory);
 		} catch (MythlandsServiceException e) {
 			return new ServerMessage(e.getMessage(), true);

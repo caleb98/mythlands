@@ -449,6 +449,10 @@ public class MythlandsCharacter {
 		else if(currentHealth > maxHealth.getValue()) {
 			currentHealth = maxHealth.getValue();
 		}
+		
+		if(currentHealth == 0) {
+			isDeceased = true;
+		}
 	}
 
 	public double getMaxMana() {

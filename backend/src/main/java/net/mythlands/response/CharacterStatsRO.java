@@ -1,5 +1,7 @@
 package net.mythlands.response;
 
+import com.google.gson.Gson;
+
 import net.mythlands.dto.MythlandsCharacterDTO;
 
 public class CharacterStatsRO {

@@ -5,20 +5,16 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import com.google.gson.JsonObject;
-
+import net.mythlands.core.action.CombatActionFunction;
 import net.mythlands.core.action.CombatContext;
-import net.mythlands.event.CharacterStatsUpdateEvent;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.service.MythlandsGameService;
 
 @Component
 public class CombatActionFunctionInitializer implements ApplicationRunner {
 
-	@Autowired private ApplicationEventPublisher eventPublisher;
 	@Autowired private MythlandsGameService gameService;
 	
 	@Override
@@ -41,15 +37,16 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param boss
 	 * @param data
 	 */
-	private void healPlayer(CombatContext context, Map<String, String> data) {
+	private long healPlayer(CombatContext context, Map<String, String> data) {
 		try {
 			boolean updated = gameService.modifyHealth(context.hero.id, Double.parseDouble(data.get(("amount"))));
 			if(updated) {
-				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
+				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}
+		return 0;
 	}
 	
 	/**
@@ -63,15 +60,16 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param context
 	 * @param data
 	 */
-	private void restorePlayerMana(CombatContext context, Map<String, String> data) {
+	private long restorePlayerMana(CombatContext context, Map<String, String> data) {
 		try {
 			boolean updated = gameService.modifyMana(context.hero.id, Double.parseDouble(data.get(("amount"))));
 			if(updated) {
-				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
+				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}
+		return 0;
 	}
 	
 	/**
@@ -88,7 +86,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param context
 	 * @param data
 	 */
-	private void addPlayerStats(CombatContext context, Map<String, String> data) {
+	private long addPlayerStats(CombatContext context, Map<String, String> data) {
 		try {
 			StatType stat = StatType.valueOf(data.get("stat"));
 			double additional = 0;
@@ -106,11 +104,12 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			
 			boolean updated = gameService.addStatModification(context.hero.id, stat, additional, increase, multiplier);
 			if(updated) {
-				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
+				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}
+		return 0;
 	}
 	
 	/**
@@ -127,7 +126,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param context
 	 * @param data
 	 */
-	private void removePlayerStats(CombatContext context, Map<String, String> data) {
+	private long removePlayerStats(CombatContext context, Map<String, String> data) {
 		try {
 			StatType stat = StatType.valueOf(data.get("stat"));
 			double additional = 0;
@@ -143,13 +142,14 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			boolean updated = gameService.removeStatModification(context.hero.owner.username, stat, additional, increase, multiplier);
+			boolean updated = gameService.removeStatModification(context.hero.owner, stat, additional, increase, multiplier);
 			if(updated) {
-				eventPublisher.publishEvent(new CharacterStatsUpdateEvent(context.hero));
+				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
 		} catch (MythlandsServiceException e) {
 			e.printStackTrace();
 		}
+		return 0;
 	}
 
 }

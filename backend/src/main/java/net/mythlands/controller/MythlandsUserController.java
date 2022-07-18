@@ -11,29 +11,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import net.mythlands.dto.MythlandsUserDTO;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.messages.out.ServerMessage;
+import net.mythlands.response.CharacterRO;
+import net.mythlands.response.TimestampedRO;
+import net.mythlands.response.UserRO;
 import net.mythlands.service.MythlandsUserService;
 
 @Controller
 public class MythlandsUserController {
 	
 	@Autowired private MythlandsUserService userService;
-	
-	@GetMapping(path="/user/info")
-	public @ResponseBody ServerMessage userData(Authentication auth) {
-		if(auth == null) {
-			return new ServerMessage("Not logged in.", true);
-		}
-		
-		try {
-			MythlandsUserDTO info = userService.getUserInfo(auth.getName());
-			return new ServerMessage("Success!", info);
-		} catch (MythlandsServiceException e) {
-			return new ServerMessage(e.getMessage(), true);
-		}
-	}
 	
 	@PostMapping("/user/register")
 	public @ResponseBody ServerMessage addNewUser(
@@ -60,6 +48,51 @@ public class MythlandsUserController {
 		
 		// Success!
 		return new ServerMessage("Success!");
+	}
+	
+	@GetMapping("/user")
+	public @ResponseBody ServerMessage user(Authentication auth) {
+		if(auth == null) {
+			return new ServerMessage("Not logged in.", true);
+		}
+		
+		try {
+			UserRO info = new UserRO(userService.getUserInfo(auth.getName()));
+			return new ServerMessage("Success!", info);
+		} catch (MythlandsServiceException e) {
+			return new ServerMessage(e.getMessage(), true);
+		}
+	}
+	
+	@GetMapping("/user/character")
+	public @ResponseBody ServerMessage userActiveCharacter(Authentication auth) {
+		if(auth == null) {
+			return new ServerMessage("Not logged in.", true);
+		}
+		
+		try {
+			var character = new CharacterRO(userService.getActiveCharacter(auth.getName()));
+			var data = new TimestampedRO<CharacterRO>(character);
+			return new ServerMessage("Success!", data);
+		} catch (MythlandsServiceException e) {
+			return new ServerMessage(e.getMessage(), true);
+		}
+	}
+	
+	@GetMapping("/user/characters")
+	public @ResponseBody ServerMessage userCharacters(Authentication auth) {
+		if(auth == null) {
+			return new ServerMessage("Not logged in.", true);
+		}
+		
+		try {
+			var characters = userService.getAllCharacters(auth.getName()).stream()
+					.map(CharacterRO::new)
+					.toList();
+			return new ServerMessage("Success!", characters);
+		} catch (MythlandsServiceException e) {
+			return new ServerMessage(e.getMessage(), true);
+		}
 	}
 	
 }

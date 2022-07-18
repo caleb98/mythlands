@@ -5,7 +5,7 @@
 
 			<div class="mb-3">
 				<label for="register-username-input" class="form-label">Username</label>
-				<input type="text" class="form-control" id="register-username-input" v-model="username" placeholder="username">
+				<input type="text" class="form-control" id="register-username-input" v-model="username" placeholder="username" autocomplete="off">
 			</div>
 
 			<div class="mb-3">

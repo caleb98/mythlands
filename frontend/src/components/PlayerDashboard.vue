@@ -1,10 +1,10 @@
 <template>
 	<div>
 		<!-- Attack Buttons -->
-		<div class="container-fluid p-2 framed mb-2 position-relative" v-if="activeCharacter != null">
+		<div class="container-fluid p-2 framed mb-2 position-relative" v-if="hasActiveCharacter">
 			<div class="row">
 				<div class="col">
-					<button type="button" class="btn btn-danger" @click="attack()" :disabled="cooldownTime > 0 || isCharacterDeceased">Attack</button>
+					<button type="button" class="btn btn-danger" @click="attack()" :disabled="cooldownTime > 0 || characterInfo.isDeceased">Attack</button>
 				</div>
 			</div>
 			<div id="recharge-box" :style="{ 'animation-duration': cooldownTime + 's' }"></div>
@@ -14,16 +14,16 @@
 		<div class="container-fluid pt-3 pb-3 framed mb-2" v-if="showCharacterCreator">
 			<div class="row justify-content-center">
 				<div class="col-6">
-					<CharacterCreationComponent @characterCreationSuccess="loadUserCharacters()"/>
+					<CharacterCreationComponent @characterCreationSuccess="loadActiveCharacter()"/>
 				</div>
 			</div>
 		</div>
 
 		<!-- Active Character Display -->
-		<div class="container-fluid pt-3 pb-3 framed mb-2 position-relative" v-if="activeCharacter != null">
+		<div class="container-fluid pt-3 pb-3 framed mb-2 position-relative" v-if="hasActiveCharacter && !showCharacterCreator">
 
 			<!-- Death Overlay -->
-			<div id="death-overlay" class="container-fluid" v-if="activeCharacter.isDeceased">
+			<div id="death-overlay" class="container-fluid" v-if="characterInfo.isDeceased">
 				<div class="row justify-content-center align-items-center" style="height: 100%">
 					<div class="col">
 						<h3 class="text-center"><b>Dead</b></h3>
@@ -45,17 +45,17 @@
 				<div class="col-auto p-0">
 					<div class="row">
 						<div class="col-auto">
-							<ItemIconComponent :displayItem="activeCharacter.weaponItem" itemSlot="weapon-item" />
+							<ItemIconComponent :displayItem="characterEquipment.weaponItem" itemSlot="weapon-item" />
 						</div>
 					</div>
 					<div class="row">
 						<div class="col-auto">
-							<ItemIconComponent :displayItem="activeCharacter.armorItem" itemSlot="armor-item" />
+							<ItemIconComponent :displayItem="characterEquipment.armorItem" itemSlot="armor-item" />
 						</div>
 					</div>
 					<div class="row">
 						<div class="col-auto">
-							<ItemIconComponent :displayItem="activeCharacter.trinketItem" itemSlot="trinket-item" />
+							<ItemIconComponent :displayItem="characterEquipment.trinketItem" itemSlot="trinket-item" />
 						</div>
 					</div>
 				</div>
@@ -133,19 +133,19 @@
 				<div class="col-12">
 					<div class="progress resource-bar border-health mb-1">
 						<div class="progress-bar progress-bar-striped bg-health" 
-							:class="{'bg-health-cap': showHealthCap, 'progress-bar-animated': !activeCharacter.isDeceased}" role="progressbar" :style="{width: healthPercent + '%'}">
+							:class="{'bg-health-cap': showHealthCap, 'progress-bar-animated': !characterInfo.isDeceased}" role="progressbar" :style="{width: healthPercent + '%'}">
 						</div>
 						<div class="progress-bar-title">{{healthString}}</div>
 					</div>
 					<div class="progress resource-bar border-mana mb-1">
 						<div class="progress-bar progress-bar-striped bg-mana" 
-							:class="{'bg-mana-cap': showManaCap, 'progress-bar-animated': !activeCharacter.isDeceased}" role="progressbar" :style="{width: manaPercent + '%'}">
+							:class="{'bg-mana-cap': showManaCap, 'progress-bar-animated': !characterInfo.isDeceased}" role="progressbar" :style="{width: manaPercent + '%'}">
 						</div>
 						<div class="progress-bar-title">{{manaString}}</div>
 					</div>
 					<div class="progress resource-bar border-xp">
 						<div class="progress-bar progress-bar-striped bg-xp" 
-							:class="{'bg-xp-cap': showXpCap, 'progress-bar-animated': !activeCharacter.isDeceased}" role="progressbar" :style="{width: xpPercent + '%'}">
+							:class="{'bg-xp-cap': showXpCap, 'progress-bar-animated': !characterInfo.isDeceased}" role="progressbar" :style="{width: xpPercent + '%'}">
 						</div>
 						<div class="progress-bar-title">{{xpString}}</div>
 					</div>
@@ -156,16 +156,18 @@
 			<div class="row inventory-frame mx-0 mt-2">
 				<div class="col-12">
 					<div class="row">
-						<div class="col-auto p-0" v-for="(n, slot) in activeCharacter.inventoryCapacity" :key="slot">
-							<ItemIconComponent :displayItem="activeCharacterInventory[slot]" :itemSlot="'' + slot"/>
+						<div class="col-auto p-0" v-for="(n, slot) in characterInventory.capacity" :key="slot">
+							<ItemIconComponent :displayItem="characterInventory.items[slot]" :itemSlot="'' + slot"/>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
+
+		<!-- Bottom Menu Buttons -->
 		<div class="container-fluid framed p-2">
 			<div class="row">
-				<div class="col-auto" v-if="isCharacterDeceased && !showCharacterCreator">
+				<div class="col-auto" v-if="characterInfo.isDeceased && !showCharacterCreator">
 					<button @click="showCharacterCreator = true" class="btn btn-primary">New Character</button>
 				</div>
 				<div class="col-auto ms-auto">
@@ -191,16 +193,37 @@ export default {
 	},
 	data() {
 		return {
-			characters: [],
-			activeCharacterId: -1,
-			activeCharacterInventory: [],
+			// Currently logged-in user info
 			userInfo: null,
-			cooldownTime: 0,
+			hasActiveCharacter: false,
 			showCharacterCreator: false,
 
+			// Primary Character information
 			characterInfo: { 
 				timestamp: 0,
+
+				firstName: "",
+				lastName: "",
+				isDeceased: false,
+				ownerName: "",
 			},
+
+			// Character Inventory
+			characterInventory: {
+				capacity: 0,
+				items: new Map(),
+			},
+
+			// Character Equipment
+			characterEquipment: {
+				timestamp: 0,
+
+				weaponItem: null,
+				armorItem: null,
+				trinketItem: null,
+			},
+
+			// Character Stats
 			characterStats: { 
 				timestamp: 0,
 				
@@ -228,39 +251,26 @@ export default {
 				xpGain: 0,
 				attackCooldown: 0,
 			},
+
+			// Character effects
 			characterEffects: { 
-				timestamp: 0
+				timestamp: 0,
+				effects: []
 			},
 
 		}
 	},
+
 	props: {
 		bossId: Number
 	},
-	emits: ["loggedOut"],
-	methods: {
-		loadUserCharacters() {
-			$.get("/character/list", response => {
-				if(response.isError) {
-					console.log("Error retrieving character list: " + response.message);
-					return;
-				}
-				
-				this.characters = response.data.characters;
-				this.activeCharacterId = response.data.activeCharacterId;
-				
-				if(this.activeCharacterId == -1) {
-					this.showCharacterCreator = true;
-				}
-				else {
-					this.showCharacterCreator = false;
-				}
-			});
-		},
 
+	emits: ["loggedOut"],
+
+	methods: {
 		loadUserInfo() {
 			const self = this;
-			$.get("/user/info", function(data) {
+			$.get("/user", function(data) {
 				if(data.isError) {
 					console.log("Error retrieving user info: " + data.message);
 					return;
@@ -270,16 +280,31 @@ export default {
 			});
 		},
 
-		loadInventory() {
+		loadActiveCharacter() {
 			const self = this;
-			$.get("/character/inventory", function(data) {
+			$.get("/user/character", function(data) {
 				if(data.isError) {
-					console.log("Error retrieving character inventory: " + data.message);
-					return;
+					self.showCharacterCreator = true;
 				}
+				else {
+					let character = data.data.data; // .data.data.data.data.....
+					self.hasActiveCharacter = true;
+					self.showCharacterCreator = false;
 
-				self.activeCharacterInventory = data.data;
-			});
+					// Update timestamps
+					self.characterInfo.timestamp = data.data.timestamp;
+					self.characterEquipment.timestamp = data.data.timestamp;
+					self.characterStats.timestamp = data.data.timestamp;
+					self.characterEffects.timestamp = data.data.timestamp;
+
+					// Update object data
+					Object.assign(self.characterInfo, character.info);
+					Object.assign(self.characterEquipment, character.equipment);
+					Object.assign(self.characterStats, character.stats);
+					Object.assign(self.characterEffects, character.effects);
+					Object.assign(self.characterInventory, character.inventory);
+				}
+			})
 		},
 
 		logout() {
@@ -312,25 +337,12 @@ export default {
 	},
 
 	computed: {
-		activeCharacter() {
-			if(this.activeCharacterId == -1) {
-				return null;
-			}
-			else {
-				return this.characters.filter(character => character.id == this.activeCharacterId)[0];
-			}
-		},
-
-		isCharacterDeceased() {
-			return this.activeCharacter == null ? false : this.activeCharacter.isDeceased;
-		},
-
 		xpToLevel() {
 			return 10 + (10 * (this.characterStats.level - 1));
 		},
 
 		fullCharacterName() {
-			return this.activeCharacter.firstName + " " + this.activeCharacter.lastName;
+			return this.characterInfo.firstName + " " + this.characterInfo.lastName;
 		},
 
 		healthString() {
@@ -371,6 +383,10 @@ export default {
 
 		hasSkillPoints() {
 			return this.characterStats.skillPoints > 0;
+		},
+
+		cooldownTime() {
+			return (this.characterStats.attackReady - Date.now()) / 1000;
 		}
 	},
 
@@ -380,7 +396,7 @@ export default {
 				$("#recharge-box").addClass("cooldown-active");
 				setTimeout(() => {
 					$("#recharge-box").removeClass("cooldown-active");
-					this.cooldownTime = 0;
+					this.characterStats.attackReady = 0;
 				}, this.cooldownTime * 1000);
 			}
 		},
@@ -392,68 +408,75 @@ export default {
 
 	mounted() {
 		this.loadUserInfo();
-		this.loadUserCharacters();
-		this.loadInventory();
+		this.loadActiveCharacter();
+
+		this.characterInfoSub = WS.watch("/user/local/character.info")
+			.pipe(map(message => {
+				return JSON.parse(message.body)
+			}))
+			.subscribe(body => {
+				if(body.timestamp > this.characterInfo.timestamp) {
+					this.characterInfo.timestamp = body.timestamp;
+					Object.assign(this.characterInfo, body.data);
+				}
+			});
 
 		this.characterStatsSub = WS.watch("/user/local/character.stats")
 			.pipe(map(message => {
-				return JSON.parse(message.body);
+				return JSON.parse(message.body)
 			}))
 			.subscribe(body => {
-				console.log(JSON.stringify(body, null, 2));
+				console.log(body.timestamp + ":" + JSON.stringify(body.data, null, 2))
 				if(body.timestamp > this.characterStats.timestamp) {
 					this.characterStats.timestamp = body.timestamp;
 					Object.assign(this.characterStats, body.data);
 				}
 			});
 
-		this.cooldownSub = WS.watch("/user/local/character.cooldown")
+		this.characterEffectsSub = WS.watch("/user/local/character.effects")
 			.pipe(map(message => {
 				return JSON.parse(message.body)
 			}))
 			.subscribe(body => {
-				this.cooldownTime = body.attackCooldown;
+				if(body.timestamp > this.characterEffects.timestamp) {
+					this.characterEffects.timestamp = body.timestamp;
+					Object.assign(this.characterEffects, body.data);
+				}
 			});
 
-		this.inventorySub = WS.watch("/user/local/inventory")
+		this.inventorySub = WS.watch("/user/local/character.inventory")
 			.pipe(map(message => {
 				return JSON.parse(message.body)
 			}))
 			.subscribe(changes => {
 				for(var slot in changes) {
-					if(slot == "WEAPON") {
-						this.activeCharacter.weaponItem = changes[slot];
-					}
-					else if(slot == "ARMOR") {
-						this.activeCharacter.armorItem = changes[slot];
-					}
-					else if(slot == "TRINKET") {
-						this.activeCharacter.trinketItem = changes[slot];
-					}
-					else if(changes[slot] == null) {
-						delete this.activeCharacterInventory[slot];
+					if(changes[slot] == null) {
+						delete this.characterInventory.items[slot];
 					}
 					else {
-						this.activeCharacterInventory[slot] = changes[slot];
+						this.characterInventory.items[slot] = changes[slot];
 					}
 				}
 			});
-		
-		this.statusSub = WS.watch("/user/local/statuseffect")
+
+		this.equipmentSub = WS.watch("/user/local/character.equipment")
 			.pipe(map(message => {
-				console.log(message.body);
 				return JSON.parse(message.body);
 			}))
-			.subscribe(effects => {
-				this.activeCharacter.effects = effects;
-			})
+			.subscribe(body => {
+				if(body.timestamp > this.characterEquipment.timestamp) {
+					this.characterEquipment.timestamp = body.timestamp;
+					Object.assign(this.characterEquipment, body.data);
+				}
+			});
 	},
 
 	unmounted() {
+		this.characterInfoSub.unsubscribe();
 		this.characterStatsSub.unsubscribe();
-		this.cooldownSub.unsubscribe();
+		this.characterEffectsSub.unsubscribe();
 		this.inventorySub.unsubscribe();
-		this.statusSub.unsubscribe();
+		this.equipmentSub.unsubscribe();
 	}
 }
 </script>

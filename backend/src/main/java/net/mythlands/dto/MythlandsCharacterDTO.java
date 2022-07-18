@@ -16,7 +16,7 @@ public class MythlandsCharacterDTO {
 	public final String firstName;
 	public final String lastName;
 	public final boolean isDeceased;
-	public final MythlandsUserDTO owner;	
+	public final String owner;	
 	
 	// Character Inventory
 	public final Map<Integer, ItemInstanceDTO> inventory;
@@ -67,7 +67,7 @@ public class MythlandsCharacterDTO {
 		attackReady = hc.getAttackReady();
 		skillPoints = hc.getSkillPoints();
 		
-		owner = new MythlandsUserDTO(hc.getOwner());
+		owner = hc.getOwner().getUsername();
 		
 		inventory = new HashMap<>();
 		for(int slot : hc.getInventory().keySet()) {

@@ -11,7 +11,7 @@
 			<img :src="'/img' + icon" class="item-icon-image" draggable="false" @contextmenu="event => event.preventDefault()">
 
 			<div class="item-overlay-wrapper" v-if="displayItem">
-				<div class="item-count" v-if="displayItem.template.stackSize != 1">{{ displayItem.count }}</div>
+				<div class="item-count" v-if="displayItem.stackSize != 1">{{ displayItem.count }}</div>
 				<div class="item-cooldown" v-if="onCooldown">{{ cooldownTime }}</div>
 			</div>
 		</div>
@@ -58,7 +58,7 @@ export default {
 
 	computed: {
 		rarityColor() {
-			switch(this.displayItem.template.rarity) {
+			switch(this.displayItem.rarity) {
 				case "JUNK": return'gray';
 				case "COMMON": return 'white';
 				case "UNCOMMON": return'#07d907';
@@ -78,7 +78,7 @@ export default {
 
 		icon() {
 			if(this.displayItem) {
-				return this.displayItem.template.icon;
+				return this.displayItem.icon;
 			}
 			else {
 				return "/item/empty.png";

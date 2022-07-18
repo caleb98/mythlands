@@ -1,5 +1,6 @@
 package net.mythlands.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -20,9 +21,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.google.gson.Gson;
-
 import net.mythlands.core.Boss;
+import net.mythlands.core.CombatFunctionQueue;
 import net.mythlands.core.ContributionInfo;
 import net.mythlands.core.MythlandsCharacter;
 import net.mythlands.core.MythlandsUser;
@@ -57,15 +57,16 @@ import net.mythlands.dto.StatusEffectTemplateDTO;
 import net.mythlands.event.BossDiedEvent;
 import net.mythlands.event.BossUpdateEvent;
 import net.mythlands.event.CharacterEffectsUpdateEvent;
+import net.mythlands.event.CharacterEquipmentUpdateEvent;
+import net.mythlands.event.CharacterInfoUpdateEvent;
 import net.mythlands.event.CharacterStatsUpdateEvent;
-import net.mythlands.event.CooldownUpdateEvent;
+import net.mythlands.event.InventoryUpdateEvent;
 import net.mythlands.exception.MythlandsServiceException;
 import net.mythlands.repository.MythlandsAffixRepository;
 import net.mythlands.repository.MythlandsCharacterRepository;
 import net.mythlands.repository.MythlandsCombatActionRepository;
 import net.mythlands.repository.MythlandsItemRepository;
 import net.mythlands.repository.MythlandsItemTemplateRepository;
-import net.mythlands.repository.MythlandsStatusEffectRepository;
 import net.mythlands.repository.MythlandsStatusEffectTemplateRepository;
 import net.mythlands.repository.MythlandsUserRepository;
 
@@ -78,13 +79,11 @@ public class MythlandsGameService {
 	@Autowired private MythlandsCharacterRepository characterRepository;	
 	@Autowired private MythlandsAffixRepository affixRepository;
 	@Autowired private MythlandsUserRepository userRepository;
-	@Autowired private MythlandsStatusEffectRepository statusRepository;
 	@Autowired private MythlandsStatusEffectTemplateRepository statusTemplateRepository;
 	
 	private HashMap<String, CombatActionFunction> functionMap = new HashMap<>();
 	
 	@Autowired private ApplicationEventPublisher eventPublisher;
-	@Autowired private Gson gson;
 	private Logger logger = LoggerFactory.getLogger(MythlandsGameService.class);
 	
 	@Autowired private NameGenerator bossNameGenerator;
@@ -102,6 +101,18 @@ public class MythlandsGameService {
 	/********************************************************/
 	/*                  Character Methods                   */
 	/********************************************************/
+	
+	/**
+	 * Returns an updated view of the character.
+	 * @param characterDto
+	 * @return
+	 * @throws MythlandsServiceException
+	 */
+	@Transactional
+	public MythlandsCharacterDTO getUpdated(MythlandsCharacterDTO characterDto) throws MythlandsServiceException {
+		MythlandsCharacter character = getCharacter(characterDto.id);
+		return new MythlandsCharacterDTO(character);
+	}
 	
 	/**
 	 * Attacks the currently active boss with a given user's active hero.
@@ -139,7 +150,7 @@ public class MythlandsGameService {
 			throw new MythlandsServiceException("Attack is still on cooldown.");
 		}
 
-		long now = System.currentTimeMillis();
+//		long now = System.currentTimeMillis();
 //		var data = new HashMap<String, String>();
 //		data.put("stat", "STRENGTH");
 //		data.put("additional", "5");
@@ -192,19 +203,26 @@ public class MythlandsGameService {
 		eventPublisher.publishEvent(new BossUpdateEvent(boss));
 		
 		// Do attack post processing
-		modifyHealth(hero, -1);
-		grantXp(hero, 1);
+		hero.modifyCurrentHealth(-5);
+		if(hero.getCurrentHealth() > 0) {
+			grantXp(hero, 1);
+		}
+		
 		// TODO: xp gain modifier
 		// TODO: gold?
-		
-		MythlandsCharacterDTO heroDto = new MythlandsCharacterDTO(hero);
-		eventPublisher.publishEvent(new CharacterStatsUpdateEvent(heroDto));
 		
 		// Set attack cooldown
 		int cooldownTime = (int) Math.round(hero.getAttackCooldown().getValue());
 		setAttackCooldown(hero, currentTime + cooldownTime);
-		// TODO: incorporate this in stats?
-		eventPublisher.publishEvent(new CooldownUpdateEvent(hero.getOwner().getUsername(), cooldownTime / 1000.0));
+
+		// Send an update to the user
+		var characterDto = new MythlandsCharacterDTO(hero);
+		eventPublisher.publishEvent(new CharacterStatsUpdateEvent(characterDto));
+		
+		// If the hero died, update info as well
+		if(hero.getCurrentHealth() <= 0) {
+			eventPublisher.publishEvent(new CharacterInfoUpdateEvent(characterDto));
+		}
 	}
 	
 	@Transactional
@@ -649,6 +667,7 @@ public class MythlandsGameService {
 		}
 		
 		CombatContext context = new CombatContext(new MythlandsCharacterDTO(character), boss);
+		CombatFunctionQueue functionQueue = new CombatFunctionQueue();
 		
 		if(dequip == null) {
 			character.getInventory().remove(invSlot);
@@ -661,7 +680,7 @@ public class MythlandsGameService {
 			for(var affix : affixes) {
 				var data = affix.getData();
 				var func = getCombatActionFunction(affix.getTemplate().getOnDequip());
-				func.execute(context, data);
+				functionQueue.add(func, data);
 			}
 		}
 
@@ -671,9 +690,20 @@ public class MythlandsGameService {
 			for(var affix : affixes) {
 				var data = affix.getData();
 				var func = getCombatActionFunction(affix.getTemplate().getOnEquip());
-				func.execute(context, data);
+				functionQueue.add(func, data);
 			}
 		}
+		
+		// Run all the equip/dequip functions
+		var characterDto = new MythlandsCharacterDTO(character);
+		functionQueue.run(this, new CombatContext(characterDto, boss), eventPublisher);
+		
+		// Send the appropriate updates
+		characterDto = new MythlandsCharacterDTO(character);
+		var updates = new HashMap<Integer, ItemInstanceDTO>();
+		updates.put(invSlot, getInstanceDTO(character.getInventory().get(invSlot)));
+		eventPublisher.publishEvent(new InventoryUpdateEvent(characterDto, updates));
+		eventPublisher.publishEvent(new CharacterEquipmentUpdateEvent(characterDto));
 	}
 	
 	/**
@@ -732,6 +762,12 @@ public class MythlandsGameService {
 				character.getInventory().remove(useSlot);
 				itemRepository.delete(use);
 			}
+			
+			// Send the update event
+			var characterDto = new MythlandsCharacterDTO(character);
+			var updates = new HashMap<Integer, ItemInstanceDTO>();
+			updates.put(useSlot, getInstanceDTO(character.getInventory().get(useSlot)));
+			eventPublisher.publishEvent(new InventoryUpdateEvent(characterDto, updates));
 		}
 		// Non-usable item type
 		else {
@@ -813,6 +849,13 @@ public class MythlandsGameService {
 			character.getInventory().put(fromSlot, toItem);
 		}
 		
+		// Send updates
+		var characterDto = new MythlandsCharacterDTO(character);
+		var updates = new HashMap<Integer, ItemInstanceDTO>();
+		updates.put(fromSlot, getInstanceDTO(character.getInventory().get(fromSlot)));
+		updates.put(toSlot, getInstanceDTO(character.getInventory().get(toSlot)));
+		eventPublisher.publishEvent(new InventoryUpdateEvent(characterDto, updates));
+		
 	}
 	
 	/**
@@ -876,27 +919,39 @@ public class MythlandsGameService {
 		}
 		
 		// Check if the character's inventory contains any items which this one could stack with.
-		List<ItemInstance> stackable = character.getInventory().values().stream()
-				.filter(add::isStackable)
+		List<Entry<Integer, ItemInstance>> stackable = character.getInventory().entrySet().stream()
+				.filter(e -> add.isStackable(e.getValue()))
 				.collect(Collectors.toList());
 		
 		if(stackable.size() == 0) {
 			// Item cannot be stacked, so try to add it to an empty slot in the inventory
 			int insertSlot = character.getFirstEmptyInventorySlot();
+			
+			// Check no empty slot
 			if(insertSlot == -1) {
 				return false;
 			}
-			else {
-				character.getInventory().put(insertSlot, add);
-				return true;
-			}
+			
+			character.getInventory().put(insertSlot, add);
+			
+			// Send updates
+			var characterDto = new MythlandsCharacterDTO(character);
+			var updates = new HashMap<Integer, ItemInstanceDTO>();
+			updates.put(insertSlot, getInstanceDTO(character.getInventory().get(insertSlot)));
+			eventPublisher.publishEvent(new InventoryUpdateEvent(characterDto, updates));
+			
+			// Added the entire item stack
+			return true;
 		}
 		else {
 			
 			// Add count to existing stacks until this item has run out
 			int remaining = add.getCount();
 			int stackSize = add.getTemplate().getStackSize();
-			for(ItemInstance existing : stackable) {
+			ArrayList<Integer> updatedSlots = new ArrayList<>();
+			for(var entry : stackable) {
+				updatedSlots.add(entry.getKey());
+				ItemInstance existing = entry.getValue();
 				int stackAdd = stackSize - existing.getCount();
 				if(stackAdd >= remaining) {
 					existing.modifyCount(remaining);
@@ -912,20 +967,28 @@ public class MythlandsGameService {
 			// If no remaining items in this instance, delete this instance instead
 			if(remaining == 0) {
 				itemRepository.delete(add);
-				return true;
 			}
 			// Otherwise, adjust the item count in the stack and then add.
 			else {
 				add.setCount(remaining);
 				int insertSlot = character.getFirstEmptyInventorySlot();
-				if(insertSlot == -1) {
-					return false;
-				}
-				else {
+				
+				if(insertSlot != -1) {
+					remaining = 0;
 					character.getInventory().put(insertSlot, add);
-					return true;
+					updatedSlots.add(insertSlot);
 				}
 			}
+			
+			// Send updates
+			var characterDto = new MythlandsCharacterDTO(character);
+			var updates = new HashMap<Integer, ItemInstanceDTO>();
+			for(int slot : updatedSlots) {
+				updates.put(slot, getInstanceDTO(character.getInventory().get(slot)));
+			}
+			eventPublisher.publishEvent(new InventoryUpdateEvent(characterDto, updates));
+			
+			return remaining == 0;
 			
 		}
 	}
@@ -1370,7 +1433,10 @@ public class MythlandsGameService {
 	}
 	
 	private ItemInstanceDTO getInstanceDTO(ItemInstance instance) {
-		if(instance instanceof EquippableItemInstance) {
+		if(instance == null) {
+			return null;
+		}
+		else if(instance instanceof EquippableItemInstance) {
 			return new EquippableItemInstanceDTO((EquippableItemInstance) instance);
 		}
 		else if(instance instanceof ConsumableItemInstance) {

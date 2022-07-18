@@ -1,5 +1,7 @@
 package net.mythlands.event;
 
+import java.util.HashMap;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -7,22 +9,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import com.google.gson.Gson;
-
 import net.mythlands.dto.BossDTO;
 import net.mythlands.messages.out.BossDiedMessage;
-import net.mythlands.messages.out.CooldownMessage;
 import net.mythlands.response.CharacterEffectsRO;
+import net.mythlands.response.CharacterEquipmentRO;
+import net.mythlands.response.CharacterInfoRO;
 import net.mythlands.response.CharacterStatsRO;
+import net.mythlands.response.ItemRO;
 import net.mythlands.response.TimestampedRO;
-import net.mythlands.service.MythlandsGameService;
 
 @Component
 public class MythlandsEventListener {
 	
-	@Autowired private MythlandsGameService gameService;
 	@Autowired private SimpMessagingTemplate messenger;
-	@Autowired private Gson gson;
 
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
@@ -47,11 +46,13 @@ public class MythlandsEventListener {
 	
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-	public void cooldownUpdateListener(CooldownUpdateEvent event) {
+	public void characterInfoUpdateListener(CharacterInfoUpdateEvent event) {
+		var info = new CharacterInfoRO(event.character);
+		var data = new TimestampedRO<>(info);
 		messenger.convertAndSendToUser(
-				event.username,
-				"/local/character.cooldown",
-				new CooldownMessage(event.cooldown)
+				event.character.owner,
+				"/local/character.info",
+				data
 		);
 	}
 	
@@ -61,7 +62,7 @@ public class MythlandsEventListener {
 		CharacterStatsRO data = new CharacterStatsRO(event.character);
 		TimestampedRO<CharacterStatsRO> response = new TimestampedRO<>(data);
 		messenger.convertAndSendToUser(
-				event.character.owner.username,
+				event.character.owner,
 				"/local/character.stats",
 				response
 		);
@@ -73,8 +74,34 @@ public class MythlandsEventListener {
 		CharacterEffectsRO data = new CharacterEffectsRO(event.character);
 		TimestampedRO<CharacterEffectsRO> response = new TimestampedRO<>(data);
 		messenger.convertAndSendToUser(
-				event.character.owner.username, 
+				event.character.owner, 
 				"/local/character.effects",
+				response
+		);
+	}
+	
+	@Async
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+	public void inventoryUpdateListener(InventoryUpdateEvent event) {
+		var data = new HashMap<Integer, ItemRO>();
+		for(int slot : event.updates.keySet()) {
+			data.put(slot, ItemRO.getItemRO(event.updates.get(slot)));
+		}
+		messenger.convertAndSendToUser(
+				event.character.owner, 
+				"/local/character.inventory", 
+				data
+		);	
+	}
+	
+	@Async
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+	public void equipmentUpdateListener(CharacterEquipmentUpdateEvent event) {
+		var data = new CharacterEquipmentRO(event.character);
+		var response = new TimestampedRO<>(data);
+		messenger.convertAndSendToUser(
+				event.character.owner, 
+				"/local/character.equipment", 
 				response
 		);
 	}

@@ -5,16 +5,19 @@ import java.util.HashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
-
-import com.google.gson.JsonObject;
 
 import net.mythlands.dto.MythlandsCharacterDTO;
 import net.mythlands.dto.MythlandsUserDTO;
 import net.mythlands.event.CharacterStatsUpdateEvent;
 import net.mythlands.exception.MythlandsServiceException;
+import net.mythlands.response.CharacterEffectsRO;
+import net.mythlands.response.CharacterInfoRO;
+import net.mythlands.response.CharacterStatsRO;
+import net.mythlands.response.TimestampedRO;
 import net.mythlands.service.MythlandsGameService;
 import net.mythlands.service.MythlandsUserService;
 
@@ -28,6 +31,7 @@ public class CharacterSessionManager {
 	@Autowired private MythlandsUserService userService;
 	@Autowired private MythlandsGameService gameService;
 	@Autowired private ApplicationEventPublisher eventPublisher;
+	@Autowired private SimpMessagingTemplate messenger;
 	
 	private Object activeUsersLock = new Object();
 	private Thread heroUpdateThread;
@@ -36,6 +40,8 @@ public class CharacterSessionManager {
 	@EventListener
 	public void onApplicationEvent(SessionConnectedEvent event) {		
 		if(event.getUser() != null) {
+			
+			// Get the current user's information
 			MythlandsUserDTO info;
 			try {
 				info = userService.getUserInfo(event.getUser().getName());
@@ -44,6 +50,8 @@ public class CharacterSessionManager {
 				e.printStackTrace();
 				return;
 			}
+			
+			// Insert the user into the active user's map
 			final String username = info.username;
 			synchronized(activeUsersLock) {
 				if(!users.containsKey(username)) {
@@ -60,12 +68,29 @@ public class CharacterSessionManager {
 					
 				}		
 			}
+			
+			// Send the user's character information (if they have an active character)
+//			try {
+//				MythlandsCharacterDTO character = userService.getActiveCharacter(username);
+//				var characterInfo = new TimestampedRO<CharacterInfoRO>(new CharacterInfoRO(character));
+//				var characterStats = new TimestampedRO<CharacterStatsRO>(new CharacterStatsRO(character));
+//				var characterEffects = new TimestampedRO<CharacterEffectsRO>(new CharacterEffectsRO(character));
+//				
+//				messenger.convertAndSendToUser(username, "/local/character.info", characterInfo);
+//				messenger.convertAndSendToUser(username, "/local/character.stats", characterStats);
+//				messenger.convertAndSendToUser(username, "/local/character.effects", characterEffects);
+//			} catch (MythlandsServiceException e) {
+//				e.printStackTrace();
+//			}
+			
 		}
 	}
 	
 	@EventListener
 	public void onApplicationEvent(SessionDisconnectEvent event) {
 		if(event.getUser() != null) {
+			
+			// Get the current user's information
 			MythlandsUserDTO info;
 			try {
 				info = userService.getUserInfo(event.getUser().getName());
@@ -74,6 +99,8 @@ public class CharacterSessionManager {
 				e.printStackTrace();
 				return;
 			}
+			
+			// Remove them from the active user's list
 			final String username = info.username;
 			synchronized(activeUsersLock) {
 				users.remove(username);
@@ -89,6 +116,7 @@ public class CharacterSessionManager {
 					
 				}
 			}
+			
 		}
 	}
 
@@ -118,25 +146,25 @@ public class CharacterSessionManager {
 					synchronized(activeUsersLock) {
 						
 						// Loop through all active characters
-						users.keySet().parallelStream().forEach((username) -> {
+						users.keySet().parallelStream().forEach((username) -> {							
 							// Get the character's timer and increment it by one server tick duration.
 							int userTimer = users.get(username);
-							userTimer += SERVER_TICK_DURATION;
+							userTimer += SERVER_TICK_DURATION;				
 							
-							// Update the user's status effects
+							// Update the user's character
 							try {
+								var characterDto = userService.getActiveCharacter(username);
 								gameService.updateStatusEffects(username);
+								
+								// If the timer exceeds the regen interval, update that hero and
+								// adjust the timer accordingly.
+								if(userTimer > HERO_UPDATE_INTERVAL) {
+									doHeroRegen(characterDto);
+									userTimer -= HERO_UPDATE_INTERVAL;
+								}
 							} catch (MythlandsServiceException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-							
-							// If the timer exceeds the update interval, update that hero and
-							// adjust the timer accordingly.
-							if(userTimer > HERO_UPDATE_INTERVAL) {
-								doHeroRegen(username);
-								userTimer -= HERO_UPDATE_INTERVAL;
-							}
+								// This can be safely ignored.
+							}						
 							
 							// Update the user's update timer
 							users.put(username, userTimer);
@@ -162,31 +190,24 @@ public class CharacterSessionManager {
 			}
 		}
 		
-		void doHeroRegen(String username) {
-			try {
-				
-				// Retrieve the hero for the user
-				MythlandsCharacterDTO heroDto;
-				try {
-					heroDto = userService.getActiveCharacter(username);
-				} catch (MythlandsServiceException e) {
-					return;
-				}
-					
+		void doHeroRegen(MythlandsCharacterDTO character) {
+			try {					
 				// Make sure the hero is alive before doing an update
-				if(heroDto.isDeceased) {
+				if(character.isDeceased) {
 					return;
 				}
 				
 				// Regen health and mana
-				double hpAmount = heroDto.maxHealth * 0.1;
-				double manaAmount = heroDto.maxMana * 0.1;
-				boolean update = gameService.modifyHealth(heroDto.id, hpAmount);
-				update |= gameService.modifyMana(heroDto.id, manaAmount);
+				// TODO: proper regen mechanics
+				double hpAmount = character.maxHealth * 0.1;
+				double manaAmount = character.maxMana * 0.1;
+				boolean update = gameService.modifyHealth(character.id, hpAmount);
+				update |= gameService.modifyMana(character.id, manaAmount);
 				
 				// If the hp/mana regen changed anything, send the updates
 				if(update) {
-					eventPublisher.publishEvent(new CharacterStatsUpdateEvent(heroDto));
+					character = userService.getActiveCharacter(character.owner);
+					eventPublisher.publishEvent(new CharacterStatsUpdateEvent(character));
 				}
 				
 			} catch (MythlandsServiceException e) {

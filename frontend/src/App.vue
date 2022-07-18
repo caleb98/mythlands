@@ -130,7 +130,7 @@ export default {
 		doLoginCheck() {
 			const self = this;
 
-			$.get("/user/info", function(data) {
+			$.get("/user", function(data) {
 				// Not logged in
 				if(data.isError) {
 					self.showLogin();
