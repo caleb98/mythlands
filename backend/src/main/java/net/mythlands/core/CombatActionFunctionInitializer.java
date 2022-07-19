@@ -39,7 +39,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 */
 	private long healPlayer(CombatContext context, Map<String, String> data) {
 		try {
-			boolean updated = gameService.modifyHealth(context.hero.id, Double.parseDouble(data.get(("amount"))));
+			boolean updated = gameService.modifyHealth(context.character.id, Double.parseDouble(data.get(("amount"))));
 			if(updated) {
 				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
@@ -62,7 +62,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 */
 	private long restorePlayerMana(CombatContext context, Map<String, String> data) {
 		try {
-			boolean updated = gameService.modifyMana(context.hero.id, Double.parseDouble(data.get(("amount"))));
+			boolean updated = gameService.modifyMana(context.character.id, Double.parseDouble(data.get(("amount"))));
 			if(updated) {
 				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
@@ -102,7 +102,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			boolean updated = gameService.addStatModification(context.hero.id, stat, additional, increase, multiplier);
+			boolean updated = gameService.addStatModification(context.character.id, stat, additional, increase, multiplier);
 			if(updated) {
 				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
@@ -142,7 +142,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			boolean updated = gameService.removeStatModification(context.hero.owner, stat, additional, increase, multiplier);
+			boolean updated = gameService.removeStatModification(context.character.owner, stat, additional, increase, multiplier);
 			if(updated) {
 				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}

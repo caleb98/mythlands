@@ -1128,9 +1128,9 @@ public class MythlandsGameService {
 		MythlandsCharacterDTO heroDto = new MythlandsCharacterDTO(hero);
 		
 		CombatActionFunction onApply = getCombatActionFunction(template.getOnApplyFunction());
-		//TODO: boss in context & thread safety
-		onApply.execute(new CombatContext(heroDto, null), data);
-		System.out.println("Added effect " + templateId);
+		CombatFunctionQueue queue = new CombatFunctionQueue();
+		queue.add(onApply, data);
+		queue.run(this, new CombatContext(heroDto, boss), eventPublisher);
 		
 		eventPublisher.publishEvent(new CharacterEffectsUpdateEvent(heroDto));
 		

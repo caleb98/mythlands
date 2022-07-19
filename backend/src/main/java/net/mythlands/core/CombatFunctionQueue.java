@@ -34,7 +34,7 @@ public class CombatFunctionQueue {
 			updateFlags |= entry.function.execute(context, entry.data);
 		}
 		
-		MythlandsCharacterDTO character = context.hero;
+		MythlandsCharacterDTO character = context.character;
 		try {
 			character = service.getUpdated(character);
 		} catch (MythlandsServiceException e) {
