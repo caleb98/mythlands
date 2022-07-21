@@ -38,15 +38,17 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param data
 	 */
 	private long healPlayer(CombatContext context, Map<String, String> data) {
-		try {
-			boolean updated = gameService.modifyHealth(context.character.id, Double.parseDouble(data.get(("amount"))));
-			if(updated) {
-				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
-			}
-		} catch (MythlandsServiceException e) {
-			e.printStackTrace();
+		double oldHealth = context.character.getCurrentHealth();
+		context.character.modifyCurrentHealth(Double.parseDouble(data.get("amount")));
+		double newHealth = context.character.getCurrentHealth();
+		
+		// Check whether an update flag needs to be set
+		if(oldHealth != newHealth) {
+			return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 		}
-		return 0;
+		else {
+			return 0;
+		}
 	}
 	
 	/**
@@ -61,15 +63,17 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 	 * @param data
 	 */
 	private long restorePlayerMana(CombatContext context, Map<String, String> data) {
-		try {
-			boolean updated = gameService.modifyMana(context.character.id, Double.parseDouble(data.get(("amount"))));
-			if(updated) {
-				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
-			}
-		} catch (MythlandsServiceException e) {
-			e.printStackTrace();
+		double oldMana = context.character.getCurrentMana();
+		context.character.modifyCurrentMana(Double.parseDouble(data.get("amount")));
+		double newMana = context.character.getCurrentMana();
+		
+		// Check whether an update flag needs to be set
+		if(oldMana != newMana) {
+			return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 		}
-		return 0;
+		else {
+			return 0;
+		}
 	}
 	
 	/**
@@ -102,7 +106,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			boolean updated = gameService.addStatModification(context.character.id, stat, additional, increase, multiplier);
+			boolean updated = gameService.addStatModification(context.character.getId(), stat, additional, increase, multiplier);
 			if(updated) {
 				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}
@@ -142,7 +146,7 @@ public class CombatActionFunctionInitializer implements ApplicationRunner {
 			if(data.containsKey("multiplier"))
 				multiplier = Double.parseDouble(data.get("multiplier"));
 			
-			boolean updated = gameService.removeStatModification(context.character.owner, stat, additional, increase, multiplier);
+			boolean updated = gameService.removeStatModification(context.character.getId(), stat, additional, increase, multiplier);
 			if(updated) {
 				return CombatActionFunction.UPDATE_FLAG_PLAYER_STATS;
 			}

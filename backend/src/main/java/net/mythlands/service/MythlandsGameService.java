@@ -406,6 +406,14 @@ public class MythlandsGameService {
 		statValue.addIncrease(increase);
 		statValue.addMultiplier(more);
 		
+		// If the changed stat is stamina or spirit, we need to update the mana/hp values
+		if(statValue == character.getStamina()) {
+			character.recalculateMaxHealth();
+		}
+		else if(statValue == character.getSpirit()) {
+			character.recalculateMaxMana();
+		}
+		
 		return prev != statValue.getValue();
 	}
 	
@@ -454,6 +462,14 @@ public class MythlandsGameService {
 		statValue.removeAdditional(additional);
 		statValue.removeIncrease(increase);
 		statValue.removeMultiplier(more);
+		
+		// If the changed stat is stamina or spirit, we need to update the mana/hp values
+		if(statValue == character.getStamina()) {
+			character.recalculateMaxHealth();
+		}
+		else if(statValue == character.getSpirit()) {
+			character.recalculateMaxMana();
+		}
 
 		return prev != statValue.getValue();
 	}
@@ -666,7 +682,7 @@ public class MythlandsGameService {
 		
 		}
 		
-		CombatContext context = new CombatContext(new MythlandsCharacterDTO(character), boss);
+		CombatContext context = new CombatContext(character, boss);
 		CombatFunctionQueue functionQueue = new CombatFunctionQueue();
 		
 		if(dequip == null) {
@@ -695,11 +711,10 @@ public class MythlandsGameService {
 		}
 		
 		// Run all the equip/dequip functions
-		var characterDto = new MythlandsCharacterDTO(character);
-		functionQueue.run(this, new CombatContext(characterDto, boss), eventPublisher);
+		functionQueue.run(this, new CombatContext(character, boss), eventPublisher);
 		
 		// Send the appropriate updates
-		characterDto = new MythlandsCharacterDTO(character);
+		var characterDto = new MythlandsCharacterDTO(character);
 		var updates = new HashMap<Integer, ItemInstanceDTO>();
 		updates.put(invSlot, getInstanceDTO(character.getInventory().get(invSlot)));
 		eventPublisher.publishEvent(new InventoryUpdateEvent(characterDto, updates));
@@ -753,7 +768,7 @@ public class MythlandsGameService {
 			CombatAction onConsume = consumable.getConsumableItemTemplate().getOnConsume();
 			CombatActionFunction function = getCombatActionFunction(onConsume.getFunctionName());
 			// TODO: include boss (thread safety!)
-			function.execute(new CombatContext(new MythlandsCharacterDTO(character), null), onConsume.getActionData());
+			function.execute(new CombatContext(character, null), onConsume.getActionData());
 			consumable.modifyCount(-1);
 			consumable.triggerCooldown();
 			
@@ -1130,7 +1145,7 @@ public class MythlandsGameService {
 		CombatActionFunction onApply = getCombatActionFunction(template.getOnApplyFunction());
 		CombatFunctionQueue queue = new CombatFunctionQueue();
 		queue.add(onApply, data);
-		queue.run(this, new CombatContext(heroDto, boss), eventPublisher);
+		queue.run(this, new CombatContext(hero, boss), eventPublisher);
 		
 		eventPublisher.publishEvent(new CharacterEffectsUpdateEvent(heroDto));
 		
@@ -1196,6 +1211,7 @@ public class MythlandsGameService {
 		// Loop through all effects
 		boolean removed = false;
 		Iterator<StatusEffectInstance> iter = character.getStatusEffects().iterator();
+		CombatFunctionQueue queue = new CombatFunctionQueue();
 		while(iter.hasNext()) {
 			StatusEffectInstance effect = iter.next();
 			
@@ -1213,15 +1229,17 @@ public class MythlandsGameService {
 				System.out.printf("Removed effect %s (%d)\n", template.getId(), now - effect.getFinishTime());
 				
 				try {
-					CombatActionFunction remove = getCombatActionFunction(onRemoveFunction);
-					//TODO: add boss & thread safety to combat context
-					remove.execute(new CombatContext(heroDto, null), effect.getData());
+					CombatActionFunction function = getCombatActionFunction(onRemoveFunction);
+					queue.add(function, effect.getData());
 				} catch (MythlandsServiceException e) {
 					logger.warn("Unable to run remove function " + onRemoveFunction + " for effect " + template.getName());
 				}
 				
 			}
 		}
+		
+		//TODO: add boss & thread safety to combat contexts
+		queue.run(this, new CombatContext(character, boss), eventPublisher);
 		
 		// Fire update event if necessary
 		if(removed) {

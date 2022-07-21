@@ -34,13 +34,7 @@ public class CombatFunctionQueue {
 			updateFlags |= entry.function.execute(context, entry.data);
 		}
 		
-		MythlandsCharacterDTO character = context.character;
-		try {
-			character = service.getUpdated(character);
-		} catch (MythlandsServiceException e) {
-			logger.warn("Unable to update character data for \"{} {}\" ({})", 
-					character.firstName, character.lastName, character.id);
-		}
+		MythlandsCharacterDTO character = new MythlandsCharacterDTO(context.character);
 		
 		if((updateFlags & CombatActionFunction.UPDATE_FLAG_PLAYER_STATS) != 0) {
 			eventPublisher.publishEvent(new CharacterStatsUpdateEvent(character));
